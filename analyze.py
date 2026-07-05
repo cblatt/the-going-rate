@@ -205,7 +205,7 @@ def main():
             "days_median": days[len(days) // 2] if days else None,
             "pct_over_year": round(sum(1 for d in days if d > 365) / len(days), 3) if days else None,
             "deal_count": len(fam_deals),
-            "deals": fam_deals[:8],
+            "deals": fam_deals[:25],
         }
 
     # ---- cross-category insights: what to actually buy
