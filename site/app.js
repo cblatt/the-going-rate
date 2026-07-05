@@ -118,6 +118,13 @@ function initFamilies() {
 function renderDash() {
   const fam = FAMILIES[familySel.value];
   current = fam;
+  const ex = $("fam-example");
+  ex.hidden = !fam.photo;
+  if (fam.photo) {
+    $("fam-photo").src = fam.photo;
+    ex.href = fam.example_url;
+    ex.title = fam.example_title || "";
+  }
   $("s-median").textContent = money(fam.median);
   $("s-range").textContent = `${money(fam.p25)}–${money(fam.p75)}`;
   $("s-n").textContent = fam.n.toLocaleString();
@@ -244,58 +251,67 @@ function row(cells, cls) {
   return tr;
 }
 
+function shortName(f) {
+  return f.replace(/^(Fender|Gibson|Squier|Epiphone|PRS) /, "");
+}
+
+/* Family name cell with its example photo (links to a real listing). */
+function famCell(name, display) {
+  const f = FAMILIES[name];
+  const img = f && f.photo
+    ? `<a href="${f.example_url}" target="_blank" rel="noopener" title="${(f.example_title || "").replace(/"/g, "&quot;")}"><img class="thumb" src="${f.photo}" loading="lazy" alt=""></a>`
+    : `<span class="thumb ph"></span>`;
+  return { html: `<span class="famcell">${img}<span>${display || name}</span></span>` };
+}
+
 function renderInsights() {
   const it = $("import-table");
   for (const g of INSIGHTS.import_discount) {
-    it.appendChild(row([{ html: `<strong>${g.label}</strong>` },
-      `${shortName(g.base)} · ${money(g.base_median)}`, ""], "base-row"));
+    it.appendChild(row([{ html: `<strong>${g.label}</strong>` }, "", ""], "group-row"));
+    it.appendChild(row([famCell(g.base, shortName(g.base)), money(g.base_median), ""], "base-row"));
     for (const a of g.alts) {
-      it.appendChild(row(["", `${shortName(a.family)} · ${money(a.median)}`,
-        { html: `−${Math.round(a.save * 100)}%`, cls: "save" }]));
+      it.appendChild(row([famCell(a.family, shortName(a.family)), money(a.median),
+        { html: `<strong>−${Math.round(a.save * 100)}%</strong>`, cls: "save" }]));
     }
   }
 
   const vt = $("vintage-table");
   vt.appendChild(row(["guitar", "1970s", "2010s", "multiple"], "thead"));
   for (const r of INSIGHTS.vintage) {
-    vt.appendChild(row([r.family, money(r.old), money(r.new),
+    vt.appendChild(row([famCell(r.family), money(r.old), money(r.new),
       { html: `<strong>${r.multiple}×</strong>` }]));
   }
   if (INSIGHTS.vintage_flat.length) {
     vt.appendChild(row([{ html: "<em>…and where vintage buys you nothing:</em>" }, "", "", ""], "divider"));
     for (const r of INSIGHTS.vintage_flat) {
-      vt.appendChild(row([r.family, money(r.old), money(r.new), `${r.multiple}×`]));
+      vt.appendChild(row([famCell(r.family), money(r.old), money(r.new), `${r.multiple}×`]));
     }
   }
 
   const ct = $("cond-table");
   ct.appendChild(row(["guitar", "Excellent", "Good", "you save"], "thead"));
   for (const r of INSIGHTS.condition) {
-    ct.appendChild(row([r.family, money(r.exc), money(r.good),
+    ct.appendChild(row([famCell(r.family), money(r.exc), money(r.good),
       { html: `<strong>−${Math.round(r.save * 100)}%</strong>`, cls: "save" }]));
   }
 
   const lt = $("liq-table");
   lt.appendChild(row([{ html: "<em>fast movers</em>" }, "days", ""], "divider"));
   for (const r of INSIGHTS.liquidity.fast) {
-    lt.appendChild(row([r.family, r.days, `${r.n.toLocaleString()} listed`]));
+    lt.appendChild(row([famCell(r.family), r.days, `${r.n.toLocaleString()} listed`]));
   }
   lt.appendChild(row([{ html: "<em>shelf sitters — negotiate</em>" }, "days", ""], "divider"));
   for (const r of INSIGHTS.liquidity.slow) {
-    lt.appendChild(row([r.family, r.days, `${r.n.toLocaleString()} listed`]));
+    lt.appendChild(row([famCell(r.family), r.days, `${r.n.toLocaleString()} listed`]));
   }
 
   const dt = $("density-table");
   dt.appendChild(row(["guitar", "underpriced share", "count"], "thead"));
   for (const r of INSIGHTS.density) {
-    dt.appendChild(row([r.family,
+    dt.appendChild(row([famCell(r.family),
       { html: `<strong>${Math.round(r.share * 100)}%</strong>`, cls: "save" },
       `${r.deal_count} of ${r.n.toLocaleString()}`]));
   }
-}
-
-function shortName(f) {
-  return f.replace(/^(Fender|Gibson|Squier|Epiphone|PRS) /, "");
 }
 
 /* ---------- boot ---------- */

@@ -184,7 +184,15 @@ def main():
                 eras.setdefault(g["era"], []).append(g["price"])
             conds.setdefault(g["cond"], []).append(g["price"])
         fam_deals = deal_pool_by_family.get(fam, [])
+        # representative photo: an Excellent-condition listing priced
+        # nearest the group median — the most "typical" example we have
+        cands = [g for g in gs if g["photo"]]
+        pool = [g for g in cands if g["cond"] == "Excellent"] or cands
+        rep = min(pool, key=lambda g: abs(g["price"] - q["median"])) if pool else None
         families[fam] = {
+            "photo": rep["photo"] if rep else None,
+            "example_url": rep["url"] if rep else None,
+            "example_title": rep["title"] if rep else None,
             **q,
             "rank": fam_sizes.index(fam) + 1,
             "hist": {"lo": lo, "hi": hi, "counts": counts},
