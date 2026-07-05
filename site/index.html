@@ -3,65 +3,65 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fret Check — what used guitars actually cost</title>
+<title>Fret Check — the used guitar market, priced</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
   <h1>Fret Check</h1>
-  <p class="tagline">What used guitars actually cost — <span id="meta-line"></span></p>
+  <p class="tagline"><span id="meta-line"></span></p>
   <nav>
-    <button id="tab-check" class="tab active">Price check</button>
-    <button id="tab-deals" class="tab">Today's deals</button>
+    <button id="tab-dash" class="tab active">Market briefing</button>
+    <button id="tab-deals" class="tab">Today's best deals</button>
   </nav>
 </header>
 
 <main>
 
-<section id="panel-check">
+<section id="panel-dash">
   <div class="controls">
-    <label>Guitar
+    <label>Pick a guitar
       <select id="family"></select>
-    </label>
-    <label>Era
-      <select id="era"></select>
-    </label>
-    <label>Condition
-      <select id="cond"></select>
     </label>
   </div>
 
-  <div class="card" id="range-card" hidden>
-    <p class="context" id="range-context"></p>
-    <div class="hero" id="range-median"></div>
-    <p class="hero-caption">typical asking price</p>
+  <div class="statrow">
+    <div class="stat"><div class="stat-value" id="s-median"></div><div class="stat-label">typical asking price</div></div>
+    <div class="stat"><div class="stat-value" id="s-range"></div><div class="stat-label">middle 50% of prices</div></div>
+    <div class="stat"><div class="stat-value" id="s-n"></div><div class="stat-label" id="s-n-label">for sale right now</div></div>
+    <div class="stat"><div class="stat-value" id="s-days"></div><div class="stat-label" id="s-days-label">median days on market</div></div>
+  </div>
 
-    <div class="rangebar">
-      <div class="track">
-        <div class="band" id="band"></div>
-        <div class="tick median" id="tick-median"></div>
-        <div class="marker" id="marker-you" hidden>
-          <div class="marker-arrow"></div>
-          <div class="marker-label">your price</div>
-        </div>
-      </div>
-      <div class="scale">
-        <span id="lab-p10"></span>
-        <span id="lab-p90"></span>
-      </div>
-      <p class="legend-line">bar = middle 50% of asking prices · line = typical (median) ·
-        ends = 10th and 90th percentile</p>
-    </div>
-
-    <div class="tryprice">
-      <label for="price-in">Seen one for sale? Enter its price:</label>
-      <div class="tryrow">
-        <span class="dollar">$</span>
-        <input id="price-in" type="number" min="0" placeholder="1400">
-      </div>
+  <div class="card chart-card" id="card-hist">
+    <h2>Where asking prices sit</h2>
+    <p class="context">Every current listing of this guitar, by asking price.
+       Type a price to see where it lands.</p>
+    <div id="hist"></div>
+    <div class="tryrow">
+      <span class="dollar">$</span>
+      <input id="price-in" type="number" min="0" placeholder="try a price…">
       <p id="verdict" class="verdict" hidden></p>
     </div>
+  </div>
+
+  <div class="chart-pair">
+    <div class="card chart-card" id="card-era">
+      <h2>Typical price by decade</h2>
+      <p class="context">Same guitar, different birth year — the vintage effect, measured.</p>
+      <div id="era-chart"></div>
+    </div>
+    <div class="card chart-card" id="card-cond">
+      <h2>What condition is worth</h2>
+      <p class="context">Typical asking price at each condition grade.</p>
+      <div id="cond-chart"></div>
+    </div>
+  </div>
+
+  <div class="card" id="card-deals">
+    <h2>Best deals in this group right now</h2>
+    <p class="context" id="fam-deal-note"></p>
+    <div id="fam-deals"></div>
   </div>
 </section>
 

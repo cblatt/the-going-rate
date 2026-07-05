@@ -54,6 +54,39 @@ nav { display: flex; gap: 8px; border-bottom: 1px solid var(--hairline); }
 
 main { padding: 24px 20px 48px; }
 
+/* ---- stat row ---- */
+.statrow {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+}
+.stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.stat-label { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---- charts ---- */
+.chart-card { margin-bottom: 14px; }
+.chart-card h2 { margin: 0 0 2px; font-size: 16px; }
+.chart-pair {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;
+}
+@media (max-width: 640px) { .chart-pair { grid-template-columns: 1fr; } }
+svg.chart { width: 100%; height: auto; display: block; margin-top: 10px; }
+.bar { fill: var(--accent); }
+.bar-soft { fill: var(--accent-soft); }
+.baseline { stroke: var(--hairline); stroke-width: 1; }
+.medline { stroke: var(--accent); stroke-width: 2; }
+.youmark { fill: var(--ink); }
+.t-val { font: 600 12px system-ui, sans-serif; fill: var(--ink); }
+.t-lab { font: 12px system-ui, sans-serif; fill: var(--ink-2); }
+.t-n { font: 10.5px system-ui, sans-serif; fill: var(--muted); }
+
+#card-deals { margin-bottom: 14px; }
+#card-deals h2 { margin: 0 0 4px; font-size: 16px; }
+#fam-deals .deal { border: none; border-top: 1px solid var(--hairline); border-radius: 0; margin: 0; padding-left: 0; padding-right: 0; }
+
 .controls { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
 .controls label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-2); }
 select, input[type="search"], input[type="number"] {

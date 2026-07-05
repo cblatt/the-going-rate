@@ -151,10 +151,59 @@ def main():
         market.setdefault(family, []).append(
             {"era": era, "cond": cond, **quantiles(plist)})
 
+    # ---- per-family dashboard data
+    by_family = {}
+    for g in guitars:
+        by_family.setdefault(g["family"], []).append(g)
+
+    deal_pool_by_family = {}
+    for d in deals:  # already sorted best-first
+        deal_pool_by_family.setdefault(d["family"], []).append(d)
+
+    all_days = sorted(g["days_listed"] for g in guitars if g["days_listed"] is not None)
+    market_days_median = all_days[len(all_days) // 2]
+
+    fam_sizes = sorted(by_family, key=lambda f: -len(by_family[f]))
+    families = {}
+    for fam, gs in by_family.items():
+        ps = sorted(g["price"] for g in gs)
+        if len(ps) < MIN_COMPS:
+            continue
+        q = quantiles(ps)
+        # histogram of asking prices, clipped to p5..p95 so tails don't flatten it
+        lo, hi = ps[int(len(ps) * .05)], ps[max(0, int(len(ps) * .95) - 1)]
+        counts = [0] * 24
+        span = (hi - lo) or 1
+        for p in ps:
+            if lo <= p <= hi:
+                counts[min(23, int((p - lo) / span * 24))] += 1
+        days = sorted(g["days_listed"] for g in gs if g["days_listed"] is not None)
+        eras, conds = {}, {}
+        for g in gs:
+            if g["era"]:
+                eras.setdefault(g["era"], []).append(g["price"])
+            conds.setdefault(g["cond"], []).append(g["price"])
+        fam_deals = deal_pool_by_family.get(fam, [])
+        families[fam] = {
+            **q,
+            "rank": fam_sizes.index(fam) + 1,
+            "hist": {"lo": lo, "hi": hi, "counts": counts},
+            "by_era": [{"era": e, "n": len(v), "median": sorted(v)[len(v) // 2]}
+                       for e, v in sorted(eras.items()) if len(v) >= MIN_COMPS],
+            "by_cond": [{"cond": c, "n": len(v), "median": sorted(v)[len(v) // 2]}
+                        for c in ("Excellent", "Good", "Rough")
+                        if (v := conds.get(c)) and len(v) >= MIN_COMPS],
+            "days_median": days[len(days) // 2] if days else None,
+            "pct_over_year": round(sum(1 for d in days if d > 365) / len(days), 3) if days else None,
+            "deal_count": len(fam_deals),
+            "deals": fam_deals[:8],
+        }
+
     meta = {
         "guitars": len(guitars),
         "groups": sum(len(v) for v in market.values()),
-        "families": len(market),
+        "families": len(families),
+        "market_days_median": market_days_median,
         "generated": snapshot_date.strftime("%B %-d, %Y"),
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -162,7 +211,7 @@ def main():
     (OUT_DIR / "deals.json").write_text(json.dumps(top_deals))
     # data.js lets the page work from a plain double-click (no server, no fetch)
     (OUT_DIR / "data.js").write_text(
-        f"window.MARKET={json.dumps(market)};"
+        f"window.FAMILIES={json.dumps(families)};"
         f"window.DEALS={json.dumps(top_deals)};"
         f"window.META={json.dumps(meta)};")
     print(f"{len(market)} families with price tables -> site/data/market.json")

@@ -1,96 +1,157 @@
-/* Fret Check — reads window.MARKET / DEALS / META (from data/data.js).
+/* Fret Check — reads window.FAMILIES / DEALS / META (from data/data.js).
    No frameworks, no network calls: everything is precomputed. */
 
 const $ = (id) => document.getElementById(id);
 const money = (n) => "$" + Math.round(n).toLocaleString("en-US");
+const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- tabs ---------- */
 function showTab(which) {
-  $("panel-check").hidden = which !== "check";
+  $("panel-dash").hidden = which !== "dash";
   $("panel-deals").hidden = which !== "deals";
-  $("tab-check").classList.toggle("active", which === "check");
+  $("tab-dash").classList.toggle("active", which === "dash");
   $("tab-deals").classList.toggle("active", which === "deals");
 }
-$("tab-check").onclick = () => showTab("check");
+$("tab-dash").onclick = () => showTab("dash");
 $("tab-deals").onclick = () => showTab("deals");
 
-/* ---------- price check ---------- */
-const familySel = $("family"), eraSel = $("era"), condSel = $("cond");
-
-function rowsFor(family) { return MARKET[family] || []; }
-
-function fillSelect(sel, values, anyLabel) {
-  sel.innerHTML = "";
-  const any = document.createElement("option");
-  any.value = ""; any.textContent = anyLabel;
-  sel.appendChild(any);
-  for (const v of values) {
-    const o = document.createElement("option");
-    o.value = v; o.textContent = v;
-    sel.appendChild(o);
-  }
+/* ---------- tiny SVG helpers (single hue, thin marks, direct labels) ---------- */
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
 }
 
+/* Vertical bars with a $ label above each bar and a small n below —
+   for the ≤8-bar era and condition charts. */
+function barChart(mount, items, valueKey, labelKey) {
+  mount.innerHTML = "";
+  const W = 460, H = 190, top = 26, bottom = 34;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart" });
+  const max = Math.max(...items.map(d => d[valueKey]));
+  const slot = W / items.length;
+  const barW = Math.min(52, slot * 0.55);
+  items.forEach((d, i) => {
+    const h = (d[valueKey] / max) * (H - top - bottom);
+    const x = slot * i + (slot - barW) / 2;
+    const y = H - bottom - h;
+    const bar = svgEl("rect", { x, y, width: barW, height: h, rx: 3, class: "bar" });
+    bar.appendChild(svgEl("title", {})).textContent =
+      `${d[labelKey]} — typical ${money(d[valueKey])} (${d.n.toLocaleString()} listings)`;
+    svg.appendChild(bar);
+    const val = svgEl("text", { x: x + barW / 2, y: y - 7, class: "t-val", "text-anchor": "middle" });
+    val.textContent = money(d[valueKey]);
+    svg.appendChild(val);
+    const lab = svgEl("text", { x: x + barW / 2, y: H - bottom + 15, class: "t-lab", "text-anchor": "middle" });
+    lab.textContent = d[labelKey];
+    svg.appendChild(lab);
+    const n = svgEl("text", { x: x + barW / 2, y: H - bottom + 29, class: "t-n", "text-anchor": "middle" });
+    n.textContent = d.n.toLocaleString();
+    svg.appendChild(n);
+  });
+  svg.appendChild(svgEl("line", { x1: 0, x2: W, y1: H - bottom, y2: H - bottom, class: "baseline" }));
+  mount.appendChild(svg);
+}
+
+/* Histogram of asking prices with a median tick and an optional
+   "your price" marker. */
+function histChart(mount, fam, yourPrice) {
+  mount.innerHTML = "";
+  const { lo, hi, counts } = fam.hist;
+  const W = 720, H = 150, top = 26, bottom = 22;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart" });
+  const max = Math.max(...counts);
+  const bw = W / counts.length;
+  counts.forEach((c, i) => {
+    const h = max ? (c / max) * (H - top - bottom) : 0;
+    const b0 = lo + (i / counts.length) * (hi - lo);
+    const b1 = lo + ((i + 1) / counts.length) * (hi - lo);
+    const bar = svgEl("rect", {
+      x: i * bw + 1, y: H - bottom - h, width: bw - 2, height: h, rx: 2, class: "bar-soft",
+    });
+    bar.appendChild(svgEl("title", {})).textContent =
+      `${money(b0)}–${money(b1)}: ${c.toLocaleString()} listings`;
+    svg.appendChild(bar);
+  });
+  const px = (v) => Math.min(W, Math.max(0, (v - lo) / (hi - lo) * W));
+  const mx = px(fam.median);
+  svg.appendChild(svgEl("line", { x1: mx, x2: mx, y1: top - 12, y2: H - bottom, class: "medline" }));
+  const mlab = svgEl("text", {
+    x: mx, y: 11, class: "t-val",
+    "text-anchor": mx > W - 90 ? "end" : mx < 90 ? "start" : "middle",
+  });
+  mlab.textContent = `typical ${money(fam.median)}`;
+  svg.appendChild(mlab);
+  if (yourPrice) {
+    const yx = px(yourPrice);
+    svg.appendChild(svgEl("path", {
+      d: `M ${yx - 7} ${H - bottom + 14} L ${yx + 7} ${H - bottom + 14} L ${yx} ${H - bottom + 2} Z`,
+      class: "youmark",
+    }));
+  }
+  svg.appendChild(svgEl("line", { x1: 0, x2: W, y1: H - bottom, y2: H - bottom, class: "baseline" }));
+  const l0 = svgEl("text", { x: 2, y: H - 6, class: "t-n" }); l0.textContent = money(lo);
+  const l1 = svgEl("text", { x: W - 2, y: H - 6, class: "t-n", "text-anchor": "end" }); l1.textContent = money(hi);
+  svg.appendChild(l0); svg.appendChild(l1);
+  mount.appendChild(svg);
+}
+
+/* ---------- dashboard ---------- */
+const familySel = $("family");
+let current = null;
+
 function initFamilies() {
-  const names = Object.keys(MARKET).sort();
+  const names = Object.keys(FAMILIES).sort();
   familySel.innerHTML = "";
   for (const name of names) {
     const o = document.createElement("option");
-    o.value = name; o.textContent = name;
+    o.value = name;
+    o.textContent = `${name}  (${FAMILIES[name].n.toLocaleString()})`;
     familySel.appendChild(o);
   }
   familySel.value = names.includes("Fender Stratocaster (American)")
     ? "Fender Stratocaster (American)" : names[0];
-  onFamily();
+  renderDash();
 }
 
-function onFamily() {
-  const rows = rowsFor(familySel.value);
-  const eras = [...new Set(rows.map(r => r.era).filter(Boolean))].sort();
-  const conds = [...new Set(rows.map(r => r.cond).filter(Boolean))]
-    .sort((a, b) => ["Excellent", "Good", "Rough"].indexOf(a) - ["Excellent", "Good", "Rough"].indexOf(b));
-  fillSelect(eraSel, eras, "any era");
-  fillSelect(condSel, conds, "any condition");
-  render();
+function renderDash() {
+  const fam = FAMILIES[familySel.value];
+  current = fam;
+  $("s-median").textContent = money(fam.median);
+  $("s-range").textContent = `${money(fam.p25)}–${money(fam.p75)}`;
+  $("s-n").textContent = fam.n.toLocaleString();
+  $("s-n-label").textContent = `for sale right now · #${fam.rank} most-listed guitar`;
+  if (fam.days_median != null) {
+    $("s-days").textContent = fam.days_median;
+    const vs = fam.days_median <= META.market_days_median ? "sells faster than" : "sits longer than";
+    $("s-days-label").textContent =
+      `median days on market — ${vs} the market's ${META.market_days_median}`;
+  } else {
+    $("s-days").textContent = "–";
+    $("s-days-label").textContent = "median days on market";
+  }
+
+  histChart($("hist"), fam, parseFloat($("price-in").value) || null);
+  judge();
+
+  $("card-era").hidden = fam.by_era.length < 2;
+  if (fam.by_era.length >= 2) barChart($("era-chart"), fam.by_era, "median", "era");
+  $("card-cond").hidden = fam.by_cond.length < 2;
+  if (fam.by_cond.length >= 2) barChart($("cond-chart"), fam.by_cond, "median", "cond");
+
+  const box = $("fam-deals");
+  box.innerHTML = "";
+  if (fam.deals.length) {
+    $("fam-deal-note").textContent =
+      `${fam.deal_count.toLocaleString()} listings in this group are priced below even its cheap ` +
+      `quartile; here are the top ${fam.deals.length}. Asking prices — read before you believe.`;
+    fam.deals.forEach(d => box.appendChild(dealCard(d)));
+  } else {
+    $("fam-deal-note").textContent =
+      "No listing in this group currently clears our deal bar (meaningfully cheaper than even " +
+      "the cheap end of its own market, no damage admitted in the title).";
+  }
 }
-
-/* Same fallback order the scoring engine uses: most specific group with
-   enough guitars wins. Returns [row, wasFallback]. */
-function pickRow(family, era, cond) {
-  const rows = rowsFor(family);
-  const find = (e, c) => rows.find(r => r.era === e && r.cond === c);
-  const want = find(era || null, cond || null);
-  if (want) return [want, false];
-  return [find(null, cond || null) || find(era || null, null) || find(null, null), true];
-}
-
-function render() {
-  const family = familySel.value;
-  const era = eraSel.value || null, cond = condSel.value || null;
-  const [row, fell] = pickRow(family, era, cond);
-  if (!row) { $("range-card").hidden = true; return; }
-  $("range-card").hidden = false;
-
-  const label = [family, row.era, row.cond].filter(Boolean).join(" · ");
-  $("range-context").textContent =
-    `${label} — ${row.n.toLocaleString()} listings on Reverb right now` +
-    (fell ? " (closest group with enough listings to compare honestly)" : "");
-  $("range-median").textContent = money(row.median);
-  $("lab-p10").textContent = money(row.p10);
-  $("lab-p90").textContent = money(row.p90);
-
-  // geometry: linear scale from a hair below p10 to a hair above p90
-  const lo = row.p10 * 0.94, hi = row.p90 * 1.06;
-  const pos = (v) => Math.min(100, Math.max(0, (v - lo) / (hi - lo) * 100));
-  $("band").style.left = pos(row.p25) + "%";
-  $("band").style.width = (pos(row.p75) - pos(row.p25)) + "%";
-  $("tick-median").style.left = pos(row.median) + "%";
-
-  currentRow = row;
-  judge();  // re-judge any typed price against the new group
-}
-
-let currentRow = null;
 
 /* Rough percentile from the five known cut points, interpolated between. */
 function percentile(row, price) {
@@ -107,47 +168,36 @@ function percentile(row, price) {
 function judge() {
   const v = $("verdict");
   const price = parseFloat($("price-in").value);
-  if (!currentRow || !price) { v.hidden = true; return; }
+  if (!current || !price) { v.hidden = true; return; }
   v.hidden = false;
-
-  const marker = $("marker-you");
-  const lo = currentRow.p10 * 0.94, hi = currentRow.p90 * 1.06;
-  marker.hidden = false;
-  marker.style.left = Math.min(100, Math.max(0, (price - lo) / (hi - lo) * 100)) + "%";
-
-  const pct = percentile(currentRow, price);
+  const pct = percentile(current, price);
   const cheaper = Math.round(100 - pct);
   if (pct <= 9) {
-    v.textContent = `${money(price)} is below almost every comparable listing (cheaper than ~90%+). ` +
-      `Genuinely cheap — or there's something the photos aren't saying. Read twice.`;
+    v.textContent = `Below almost every comparable listing — genuinely cheap, or the photos are hiding something.`;
     v.className = "verdict good";
   } else if (pct <= 35) {
-    v.textContent = `Good price — cheaper than about ${cheaper}% of comparable listings.`;
+    v.textContent = `Good price — cheaper than about ${cheaper}% of these.`;
     v.className = "verdict good";
   } else if (pct <= 65) {
-    v.textContent = `Typical price — right in the middle of the market (cheaper than about ${cheaper}% of comps).`;
+    v.textContent = `Typical — right in the middle of this market.`;
     v.className = "verdict mid";
   } else if (pct <= 90) {
-    v.textContent = `On the high side — about ${Math.round(pct)}% of comparable listings cost less.`;
+    v.textContent = `High — about ${Math.round(pct)}% of these cost less.`;
     v.className = "verdict high";
   } else {
-    v.textContent = `${money(price)} is above nearly all comparable listings. Someone's feeling optimistic.`;
+    v.textContent = `Above nearly all comparable listings. Someone's feeling optimistic.`;
     v.className = "verdict high";
   }
 }
 
-familySel.onchange = onFamily;
-eraSel.onchange = render;
-condSel.onchange = render;
-$("price-in").oninput = judge;
+familySel.onchange = renderDash;
+$("price-in").oninput = () => { histChart($("hist"), current, parseFloat($("price-in").value) || null); judge(); };
 
 /* ---------- deal feed ---------- */
 function dealCard(d) {
   const el = document.createElement("div");
   el.className = "deal";
-  const img = d.photo
-    ? `<img src="${d.photo}" alt="" loading="lazy">`
-    : `<img alt="">`;
+  const img = d.photo ? `<img src="${d.photo}" alt="" loading="lazy">` : `<img alt="">`;
   const days = d.days_listed == null ? ""
     : d.days_listed <= 1 ? " · listed today"
     : ` · listed ${d.days_listed} days ago`;
@@ -182,7 +232,7 @@ $("deal-sort").onchange = renderDeals;
 
 /* ---------- boot ---------- */
 $("meta-line").textContent =
-  `${META.guitars.toLocaleString()} used guitars on Reverb, compared within ` +
-  `${META.groups.toLocaleString()} groups of like-for-like listings · ${META.generated}`;
+  `${META.guitars.toLocaleString()} used guitars for sale on Reverb, priced against ` +
+  `their own kind · ${META.generated}`;
 initFamilies();
 renderDeals();
