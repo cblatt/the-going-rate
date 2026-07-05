@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fret Check — what used guitars actually cost</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Fret Check</h1>
+  <p class="tagline">What used guitars actually cost — <span id="meta-line"></span></p>
+  <nav>
+    <button id="tab-check" class="tab active">Price check</button>
+    <button id="tab-deals" class="tab">Today's deals</button>
+  </nav>
+</header>
+
+<main>
+
+<section id="panel-check">
+  <div class="controls">
+    <label>Guitar
+      <select id="family"></select>
+    </label>
+    <label>Era
+      <select id="era"></select>
+    </label>
+    <label>Condition
+      <select id="cond"></select>
+    </label>
+  </div>
+
+  <div class="card" id="range-card" hidden>
+    <p class="context" id="range-context"></p>
+    <div class="hero" id="range-median"></div>
+    <p class="hero-caption">typical asking price</p>
+
+    <div class="rangebar">
+      <div class="track">
+        <div class="band" id="band"></div>
+        <div class="tick median" id="tick-median"></div>
+        <div class="marker" id="marker-you" hidden>
+          <div class="marker-arrow"></div>
+          <div class="marker-label">your price</div>
+        </div>
+      </div>
+      <div class="scale">
+        <span id="lab-p10"></span>
+        <span id="lab-p90"></span>
+      </div>
+      <p class="legend-line">bar = middle 50% of asking prices · line = typical (median) ·
+        ends = 10th and 90th percentile</p>
+    </div>
+
+    <div class="tryprice">
+      <label for="price-in">Seen one for sale? Enter its price:</label>
+      <div class="tryrow">
+        <span class="dollar">$</span>
+        <input id="price-in" type="number" min="0" placeholder="1400">
+      </div>
+      <p id="verdict" class="verdict" hidden></p>
+    </div>
+  </div>
+</section>
+
+<section id="panel-deals" hidden>
+  <div class="controls">
+    <input id="deal-search" type="search" placeholder="filter: strat, gibson, bass…">
+    <select id="deal-sort">
+      <option value="best">biggest discount</option>
+      <option value="cheap">lowest price</option>
+      <option value="fresh">newest listing</option>
+    </select>
+  </div>
+  <p class="context">The 200 most underpriced guitars on Reverb right now, each judged
+     only against listings of the same model, era, and condition. Asking prices —
+     always click through and read the listing before believing a bargain.</p>
+  <div id="deal-list"></div>
+</section>
+
+</main>
+
+<footer>
+  Built from Reverb's public listings API. Prices are asking prices, not sale prices.
+  Not affiliated with Reverb. A take-home project, built with Claude Code.
+</footer>
+
+<script src="data/data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

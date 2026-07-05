@@ -108,6 +108,7 @@ def main():
     for g in guitars:
         for key in [(g["family"], g["era"], g["cond"]),
                     (g["family"], None, g["cond"]),
+                    (g["family"], g["era"], None),
                     (g["family"], None, None)]:
             prices.setdefault(key, []).append(g["price"])
     for v in prices.values():
@@ -150,9 +151,20 @@ def main():
         market.setdefault(family, []).append(
             {"era": era, "cond": cond, **quantiles(plist)})
 
+    meta = {
+        "guitars": len(guitars),
+        "groups": sum(len(v) for v in market.values()),
+        "families": len(market),
+        "generated": snapshot_date.strftime("%B %-d, %Y"),
+    }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "market.json").write_text(json.dumps(market))
     (OUT_DIR / "deals.json").write_text(json.dumps(top_deals))
+    # data.js lets the page work from a plain double-click (no server, no fetch)
+    (OUT_DIR / "data.js").write_text(
+        f"window.MARKET={json.dumps(market)};"
+        f"window.DEALS={json.dumps(top_deals)};"
+        f"window.META={json.dumps(meta)};")
     print(f"{len(market)} families with price tables -> site/data/market.json")
     print(f"{len(deals):,} below-typical listings; top 200 -> site/data/deals.json")
 
