@@ -54,6 +54,9 @@ CONDITION_GROUP = {
     "fair": "Rough", "poor": "Rough", "non-functioning": "Rough",
 }
 
+# Listing currency stands in for seller region (the API has no seller country).
+REGION = {"USD": "US", "EUR": "Europe", "GBP": "Europe", "JPY": "Japan"}
+
 
 def decade(year_text):
     """'1974' -> '1970s'; anything unparseable -> None."""
@@ -143,6 +146,23 @@ def main():
             deals.append(g)
 
     deals.sort(key=lambda g: -g["vs_p25"])
+
+    # ---- independent LLM audit of the deal feed (see audit.py)
+    # Candidates out: the top bargains, for the referee to inspect.
+    # Verdicts in: anything the referee flagged is dropped from the feed.
+    (Path("data") / "audit_candidates.json").write_text(json.dumps(
+        [{"id": g["id"], "title": (g["title"] or "")[:140], "bin": g["bin"]}
+         for g in deals[:1200]]))
+    verdicts_path = Path("audit_verdicts.json")
+    audit = {"audited": 0, "flagged": 0}
+    if verdicts_path.exists():
+        verdicts = json.loads(verdicts_path.read_text())
+        flagged = {int(k) for k, v in verdicts.items() if not v["ok"]}
+        audit = {"audited": len(verdicts), "flagged": len(flagged)}
+        deals = [g for g in deals if g["id"] not in flagged]
+        print(f"audit: {audit['audited']:,} deals reviewed by referee, "
+              f"{audit['flagged']} flagged & removed from the feed")
+
     top_deals = deals[:200]
 
     # ---- price-range tables for the lookup page
@@ -186,6 +206,22 @@ def main():
                 eras.setdefault(g["era"], []).append(g["price"])
             conds.setdefault(g["cond"], []).append(g["price"])
         fam_deals = deal_pool_by_family.get(fam, [])
+        # non-US vs US ask gap for this family; needs a deep pool on both sides
+        pools = {}
+        for g in gs:
+            r = REGION.get(g["currency"])
+            if r:
+                pools.setdefault(r, []).append(g["price"])
+        us = sorted(pools.get("US", []))
+        fam_regions = []
+        if len(us) >= 50:
+            us_med = us[len(us) // 2]
+            for reg in ("Europe", "Japan"):
+                p = sorted(pools.get(reg, []))
+                if len(p) >= 50:
+                    med = p[len(p) // 2]
+                    fam_regions.append({"region": reg, "n": len(p), "abroad": med,
+                                        "us": us_med, "gap": round(med / us_med - 1, 3)})
         # representative photo: an Excellent-condition listing priced
         # nearest the group median — the most "typical" example we have
         cands = [g for g in gs if g["photo"]]
@@ -207,6 +243,7 @@ def main():
             "pct_over_year": round(sum(1 for d in days if d > 365) / len(days), 3) if days else None,
             "deal_count": len(fam_deals),
             "deals": fam_deals[:25],
+            "regions": fam_regions,
         }
 
     # ---- cross-category insights: what to actually buy
@@ -286,28 +323,8 @@ def main():
     brands = [{"brand": b.title(), "units": round(brand_units[b] / len(rows), 3),
                "dollars": round(brand_dollars[b] / total_value, 3)} for b in top_brands]
 
-    # geographic arbitrage: same family, non-US seller vs US seller
-    REGION = {"USD": "US", "EUR": "Europe", "GBP": "Europe", "JPY": "Japan"}
-    regions = []
-    for fam, gs in by_family.items():
-        if fam not in families:
-            continue
-        pools = {}
-        for g in gs:
-            r = REGION.get(g["currency"])
-            if r:
-                pools.setdefault(r, []).append(g["price"])
-        us = sorted(pools.get("US", []))
-        if len(us) < 50:
-            continue
-        us_med = us[len(us) // 2]
-        for reg in ("Europe", "Japan"):
-            p = sorted(pools.get(reg, []))
-            if len(p) >= 50:
-                med = p[len(p) // 2]
-                regions.append({"family": fam, "region": reg, "n": len(p),
-                                "abroad": med, "us": us_med,
-                                "gap": round(med / us_med - 1, 3)})
+    # geographic arbitrage: the per-family gaps, biggest market-wide extremes
+    regions = [{"family": fam, **r} for fam, f in families.items() for r in f["regions"]]
     regions.sort(key=lambda r: r["gap"])
     regions = regions[:12]
 
@@ -330,6 +347,7 @@ def main():
         "groups": sum(len(v) for v in market.values()),
         "families": len(families),
         "market_days_median": market_days_median,
+        "audit": audit,
         "generated": snapshot_date.strftime("%B %-d, %Y"),
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
