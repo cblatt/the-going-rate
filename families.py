@@ -34,6 +34,7 @@ R = [
     ("Squier Precision Bass",    r"squier|squire\b|squirer", r"precision|\bp[- ]?bass", "bass-guitars"),
     ("Squier Jazz Bass",         r"squier|squire\b|squirer", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
     ("Epiphone Les Paul",        r"epiphone", r"les\s?paul", None),
+    ("Epiphone SG Special",      r"epiphone", both(r"\bsg\b", r"special"), None),
     ("Epiphone SG",              r"epiphone", r"\bsg\b", None),
     ("Epiphone Casino",          r"epiphone", r"casino", None),
     ("Epiphone ES/Dot",          r"epiphone", r"\bes[- ]?\d|dot", None),
@@ -70,7 +71,9 @@ R = [
     ("Fender Mustang Bass",      r"fender", r"mustang", "bass-guitars"),
     ("Fender CD/FA Acoustic",    r"fender", r"\bcd[- ]?\d|\bfa[- ]?\d", "acoustic-guitars"),
 
-    # ---- Gibson (Les Paul tiered the same way)
+    # ---- Gibson (Les Paul tiered the same way; Sonex first — sellers
+    # file this budget 80s model as a Les Paul)
+    ("Gibson Sonex",             r"gibson", r"sonex", "electric-guitars"),
     ("Gibson Les Paul (Custom Shop)", r"gibson", both(r"les\s?paul|\blp\b", CUSTOM_SHOP), "electric-guitars"),
     ("Gibson Les Paul Custom",   r"gibson", both(r"les\s?paul|\blp\b", r"\bcustom\b"), "electric-guitars"),
     ("Gibson Les Paul Studio",   r"gibson", both(r"les\s?paul|\blp\b", r"studio"), "electric-guitars"),
@@ -158,7 +161,7 @@ def effective_brand(make, text):
         return "squier"
     if "orville" in brand:            # "Orville by Gibson" is not Gibson
         return "orville"
-    if "sterling" in brand:           # "Sterling by Music Man" likewise
+    if "sterling" in brand or "sterling by" in text:  # Music Man's import brand
         return "sterling"
     if "epiphone" in brand or ("epiphone" in text and "gibson" in brand):
         return "epiphone"
