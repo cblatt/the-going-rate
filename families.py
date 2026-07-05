@@ -1,0 +1,111 @@
+"""Model-family matching rules — the domain knowledge of this project.
+
+Each rule is (family, brand_pattern, text_pattern, product_type or None).
+A listing joins the FIRST family whose brand pattern matches its make and
+whose text pattern matches its model+title. Order matters: budget brands
+(Squier, Epiphone, PRS SE) sit above their premium siblings so "Fender
+Squier Strat" lands in the Squier family, and specific models sit above
+general ones.
+
+Guitars matching no rule stay unmatched on purpose: boutique and obscure
+instruments don't have enough comparable listings to price honestly.
+"""
+
+import re
+
+R = [
+    # ---- budget sub-brands first (their titles often name the parent brand)
+    ("Squier Stratocaster",      r"squier", r"strat", "electric-guitars"),
+    ("Squier Telecaster",        r"squier", r"\btele", "electric-guitars"),
+    ("Squier Jazzmaster/Jaguar", r"squier", r"jazzmaster|jaguar", "electric-guitars"),
+    ("Squier Precision Bass",    r"squier", r"precision|\bp[- ]?bass", "bass-guitars"),
+    ("Squier Jazz Bass",         r"squier", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
+    ("Epiphone Les Paul",        r"epiphone", r"les\s?paul", None),
+    ("Epiphone SG",              r"epiphone", r"\bsg\b", None),
+    ("Epiphone Casino",          r"epiphone", r"casino", None),
+    ("Epiphone ES/Dot",          r"epiphone", r"\bes[- ]?\d|dot", None),
+    ("PRS SE",                   r"\bprs\b|paul reed", r"\bse\b", None),
+    ("PRS S2",                   r"\bprs\b|paul reed", r"\bs2\b", None),
+
+    # ---- Fender
+    ("Fender Stratocaster",      r"fender", r"strat", "electric-guitars"),
+    ("Fender Telecaster",        r"fender", r"\btele", "electric-guitars"),
+    ("Fender Jazzmaster",        r"fender", r"jazzmaster", "electric-guitars"),
+    ("Fender Jaguar",            r"fender", r"jaguar", "electric-guitars"),
+    ("Fender Mustang/Duo-Sonic", r"fender", r"mustang|duo[- ]?sonic", "electric-guitars"),
+    ("Fender Precision Bass",    r"fender", r"precision|\bp[- ]?bass", "bass-guitars"),
+    ("Fender Jazz Bass",         r"fender", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
+    ("Fender Mustang Bass",      r"fender", r"mustang", "bass-guitars"),
+    ("Fender CD/FA Acoustic",    r"fender", r"\bcd[- ]?\d|\bfa[- ]?\d", "acoustic-guitars"),
+
+    # ---- Gibson
+    ("Gibson Les Paul",          r"gibson", r"les\s?paul|\blp\b", "electric-guitars"),
+    ("Gibson SG",                r"gibson", r"\bsg\b", "electric-guitars"),
+    ("Gibson ES-335 family",     r"gibson", r"\bes[- ]?3\d{2}\b|\b3[345]5\b|\b339\b", None),
+    ("Gibson Flying V",          r"gibson", r"flying\s?v", None),
+    ("Gibson Explorer",          r"gibson", r"explorer", None),
+    ("Gibson Firebird",          r"gibson", r"firebird", None),
+    ("Gibson J-45",              r"gibson", r"\bj[- ]?45\b", "acoustic-guitars"),
+    ("Gibson Hummingbird",       r"gibson", r"hummingbird", "acoustic-guitars"),
+    ("Gibson J-200/SJ-200",      r"gibson", r"\bs?j[- ]?200\b", "acoustic-guitars"),
+    ("Gibson Dove",              r"gibson", r"\bdove\b", "acoustic-guitars"),
+
+    # ---- PRS core
+    ("PRS Silver Sky",           r"\bprs\b|paul reed", r"silver\s?sky", None),
+    ("PRS Custom 24",            r"\bprs\b|paul reed", r"custom\s?24", None),
+    ("PRS Custom 22",            r"\bprs\b|paul reed", r"custom\s?22", None),
+    ("PRS McCarty",              r"\bprs\b|paul reed", r"mccarty", None),
+    ("PRS CE",                   r"\bprs\b|paul reed", r"\bce\b", None),
+
+    # ---- other electrics
+    ("Ibanez RG",                r"ibanez", r"\brg", "electric-guitars"),
+    ("Ibanez AZ",                r"ibanez", r"\baz\d", "electric-guitars"),
+    ("Ibanez JEM",               r"ibanez", r"\bjem\b", "electric-guitars"),
+    ("Ibanez Artcore",           r"ibanez", r"artcore|\bas\d|\baf\d|\bag\d", None),
+    ("Ibanez SR Bass",           r"ibanez", r"\bsr\d|soundgear", "bass-guitars"),
+    ("Jackson Soloist",          r"jackson", r"soloist|\bsl\d", "electric-guitars"),
+    ("Jackson Dinky",            r"jackson", r"dinky|\bdk\d?", "electric-guitars"),
+    ("Jackson Rhoads",           r"jackson", r"rhoads|\brr\d?", "electric-guitars"),
+    ("Charvel Pro-Mod/So-Cal",   r"charvel", r"pro[- ]?mod|so[- ]?cal|dk2", "electric-guitars"),
+    ("ESP/LTD EC",               r"\besp\b|\bltd\b", r"\bec[- ]?\d{3,4}|eclipse", "electric-guitars"),
+    ("Schecter C-1/Hellraiser",  r"schecter", r"\bc[- ]?1\b|hellraiser|omen", "electric-guitars"),
+    ("Gretsch White Falcon",     r"gretsch", r"white\s?falcon", None),
+    ("Gretsch 6120/Nashville",   r"gretsch", r"6120|nashville", None),
+    ("Gretsch Electromatic",     r"gretsch", r"electromatic|\bg5\d{3}", None),
+    ("Gretsch Streamliner",      r"gretsch", r"streamliner|\bg2\d{3}", None),
+    ("Rickenbacker 330/360",     r"rickenbacker", r"\b3[36]0\b", "electric-guitars"),
+    ("Rickenbacker 4001/4003",   r"rickenbacker", r"\b400[13]\b", "bass-guitars"),
+    ("Music Man StingRay Bass",  r"music\s?man", r"sting\s?ray", "bass-guitars"),
+    ("Hofner Violin Bass",       r"hofner|höfner", r"violin|500/1", "bass-guitars"),
+    ("Yamaha Pacifica",          r"yamaha", r"pacifica", "electric-guitars"),
+
+    # ---- acoustics
+    ("Martin D-28",              r"martin", r"\bd[- ]?28\b|hd[- ]?28", "acoustic-guitars"),
+    ("Martin D-18",              r"martin", r"\bd[- ]?18\b", "acoustic-guitars"),
+    ("Martin D-35",              r"martin", r"\bd[- ]?35\b", "acoustic-guitars"),
+    ("Martin D-15",              r"martin", r"\bd[- ]?15", "acoustic-guitars"),
+    ("Martin D-41/45",           r"martin", r"\bd[- ]?4[15]\b", "acoustic-guitars"),
+    ("Martin 000",               r"martin", r"\b000|triple[- ]?o", "acoustic-guitars"),
+    ("Martin OM",                r"martin", r"\bomc?[- ]?\d", "acoustic-guitars"),
+    ("Martin X Series",          r"martin", r"\b[dg0]?x\d|x series", "acoustic-guitars"),
+    ("Taylor GS Mini",           r"taylor", r"gs\s?mini", "acoustic-guitars"),
+    ("Taylor Baby/Big Baby",     r"taylor", r"\bbaby\b|bt\d", "acoustic-guitars"),
+    ("Taylor 100/200 Series",    r"taylor", r"\b[12]1[0246](ce)?\b|\b[12]5[0-9](ce)?\b", "acoustic-guitars"),
+    ("Taylor 300/400 Series",    r"taylor", r"\b[34][12][0-9](ce)?\b", "acoustic-guitars"),
+    ("Taylor 500-900 Series",    r"taylor", r"\b[5-9][12][0-9](ce)?\b", "acoustic-guitars"),
+    ("Yamaha FG/FS",             r"yamaha", r"\bfgx?[- ]?\d|\bfsx?[- ]?\d", "acoustic-guitars"),
+]
+
+RULES = [(fam, re.compile(b), re.compile(t), pt) for fam, b, t, pt in R]
+
+
+def match_family(make, model, title, product_type):
+    """Return the family for a listing, or None if it stays unmatched."""
+    brand = (make or "").lower()
+    text = f"{model or ''} {title or ''}".lower()
+    for family, bpat, tpat, pt in RULES:
+        if pt is not None and pt != product_type:
+            continue
+        if bpat.search(brand) and tpat.search(text):
+            return family
+    return None
