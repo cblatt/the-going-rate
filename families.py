@@ -13,13 +13,26 @@ instruments don't have enough comparable listings to price honestly.
 
 import re
 
+
+def both(a, b):
+    """Pattern requiring BOTH a and b to appear somewhere in the text."""
+    return rf"(?=.*(?:{a}))(?=.*(?:{b}))"
+
+
+# Factory tiers of the same model are different products at different
+# prices (a Mexican-made Strat is not comparable to an American one).
+CUSTOM_SHOP = r"custom shop(?!\s*design)|masterbuilt|murphy|historic"
+AMERICAN = r"american|\busa\b|\bu\.s\."
+JAPAN = r"\bmij\b|\bcij\b|japan"
+MEXICO = r"player\b|\bmim\b|mexic|\bstandard\b|road worn|vintera|classic series|blacktop|\bdeluxe\b"
+
 R = [
     # ---- budget sub-brands first (their titles often name the parent brand)
-    ("Squier Stratocaster",      r"squier", r"strat", "electric-guitars"),
-    ("Squier Telecaster",        r"squier", r"\btele", "electric-guitars"),
-    ("Squier Jazzmaster/Jaguar", r"squier", r"jazzmaster|jaguar", "electric-guitars"),
-    ("Squier Precision Bass",    r"squier", r"precision|\bp[- ]?bass", "bass-guitars"),
-    ("Squier Jazz Bass",         r"squier", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
+    ("Squier Stratocaster",      r"squier|squire\b|squirer", r"strat", "electric-guitars"),
+    ("Squier Telecaster",        r"squier|squire\b|squirer", r"\btele", "electric-guitars"),
+    ("Squier Jazzmaster/Jaguar", r"squier|squire\b|squirer", r"jazzmaster|jaguar", "electric-guitars"),
+    ("Squier Precision Bass",    r"squier|squire\b|squirer", r"precision|\bp[- ]?bass", "bass-guitars"),
+    ("Squier Jazz Bass",         r"squier|squire\b|squirer", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
     ("Epiphone Les Paul",        r"epiphone", r"les\s?paul", None),
     ("Epiphone SG",              r"epiphone", r"\bsg\b", None),
     ("Epiphone Casino",          r"epiphone", r"casino", None),
@@ -27,19 +40,46 @@ R = [
     ("PRS SE",                   r"\bprs\b|paul reed", r"\bse\b", None),
     ("PRS S2",                   r"\bprs\b|paul reed", r"\bs2\b", None),
 
-    # ---- Fender
-    ("Fender Stratocaster",      r"fender", r"strat", "electric-guitars"),
-    ("Fender Telecaster",        r"fender", r"\btele", "electric-guitars"),
-    ("Fender Jazzmaster",        r"fender", r"jazzmaster", "electric-guitars"),
-    ("Fender Jaguar",            r"fender", r"jaguar", "electric-guitars"),
+    # ---- Fender (tiered: specific factory lines before the catch-all)
+    ("Fender Stratocaster (Japan)",       r"fender", both(r"strat", JAPAN), "electric-guitars"),
+    ("Fender Stratocaster (Custom Shop)", r"fender", both(r"strat", CUSTOM_SHOP), "electric-guitars"),
+    ("Fender Stratocaster (American)",    r"fender", both(r"strat", AMERICAN), "electric-guitars"),
+    ("Fender Stratocaster (Mexico)",      r"fender", both(r"strat", MEXICO), "electric-guitars"),
+    ("Fender Stratocaster (other)",       r"fender", r"strat", "electric-guitars"),
+    ("Fender Telecaster (Japan)",         r"fender", both(r"\btele", JAPAN), "electric-guitars"),
+    ("Fender Telecaster (Custom Shop)",   r"fender", both(r"\btele", CUSTOM_SHOP), "electric-guitars"),
+    ("Fender Telecaster (American)",      r"fender", both(r"\btele", AMERICAN), "electric-guitars"),
+    ("Fender Telecaster (Mexico)",        r"fender", both(r"\btele", MEXICO), "electric-guitars"),
+    ("Fender Telecaster (other)",         r"fender", r"\btele", "electric-guitars"),
+    ("Fender Jazzmaster (Japan)",       r"fender", both(r"jazzmaster", JAPAN), "electric-guitars"),
+    ("Fender Jazzmaster (Custom Shop)", r"fender", both(r"jazzmaster", CUSTOM_SHOP), "electric-guitars"),
+    ("Fender Jazzmaster (American)",    r"fender", both(r"jazzmaster", AMERICAN), "electric-guitars"),
+    ("Fender Jazzmaster (Mexico)",      r"fender", both(r"jazzmaster", MEXICO), "electric-guitars"),
+    ("Fender Jazzmaster (other)",       r"fender", r"jazzmaster", "electric-guitars"),
+    ("Fender Jaguar (Japan)",     r"fender", both(r"jaguar", JAPAN), "electric-guitars"),
+    ("Fender Jaguar (American)",  r"fender", both(r"jaguar", AMERICAN), "electric-guitars"),
+    ("Fender Jaguar (Mexico)",    r"fender", both(r"jaguar", MEXICO), "electric-guitars"),
+    ("Fender Jaguar (other)",     r"fender", r"jaguar", "electric-guitars"),
     ("Fender Mustang/Duo-Sonic", r"fender", r"mustang|duo[- ]?sonic", "electric-guitars"),
-    ("Fender Precision Bass",    r"fender", r"precision|\bp[- ]?bass", "bass-guitars"),
-    ("Fender Jazz Bass",         r"fender", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
+    ("Fender Precision Bass (American)", r"fender", both(r"precision|\bp[- ]?bass", AMERICAN), "bass-guitars"),
+    ("Fender Precision Bass (Mexico)",   r"fender", both(r"precision|\bp[- ]?bass", MEXICO), "bass-guitars"),
+    ("Fender Precision Bass (other)",    r"fender", r"precision|\bp[- ]?bass", "bass-guitars"),
+    ("Fender Jazz Bass (American)", r"fender", both(r"jazz\s?bass|\bj[- ]?bass", AMERICAN), "bass-guitars"),
+    ("Fender Jazz Bass (Mexico)",   r"fender", both(r"jazz\s?bass|\bj[- ]?bass", MEXICO), "bass-guitars"),
+    ("Fender Jazz Bass (other)",    r"fender", r"jazz\s?bass|\bj[- ]?bass", "bass-guitars"),
     ("Fender Mustang Bass",      r"fender", r"mustang", "bass-guitars"),
     ("Fender CD/FA Acoustic",    r"fender", r"\bcd[- ]?\d|\bfa[- ]?\d", "acoustic-guitars"),
 
-    # ---- Gibson
-    ("Gibson Les Paul",          r"gibson", r"les\s?paul|\blp\b", "electric-guitars"),
+    # ---- Gibson (Les Paul tiered the same way)
+    ("Gibson Les Paul (Custom Shop)", r"gibson", both(r"les\s?paul|\blp\b", CUSTOM_SHOP), "electric-guitars"),
+    ("Gibson Les Paul Custom",   r"gibson", both(r"les\s?paul|\blp\b", r"\bcustom\b"), "electric-guitars"),
+    ("Gibson Les Paul Studio",   r"gibson", both(r"les\s?paul|\blp\b", r"studio"), "electric-guitars"),
+    ("Gibson Les Paul Tribute",  r"gibson", both(r"les\s?paul|\blp\b", r"tribute"), "electric-guitars"),
+    ("Gibson Les Paul Jr/Special", r"gibson", both(r"les\s?paul|\blp\b", r"junior|\bjr\b|special"), "electric-guitars"),
+    ("Gibson Les Paul Classic",  r"gibson", both(r"les\s?paul|\blp\b", r"classic"), "electric-guitars"),
+    ("Gibson Les Paul Standard", r"gibson", both(r"les\s?paul|\blp\b", r"standard"), "electric-guitars"),
+    ("Gibson Les Paul (other)",  r"gibson", r"les\s?paul|\blp\b", "electric-guitars"),
+    ("Gibson Melody Maker",      r"gibson", r"melody\s?maker", "electric-guitars"),
     ("Gibson SG",                r"gibson", r"\bsg\b", "electric-guitars"),
     ("Gibson ES-335 family",     r"gibson", r"\bes[- ]?3\d{2}\b|\b3[345]5\b|\b339\b", None),
     ("Gibson Flying V",          r"gibson", r"flying\s?v", None),
@@ -64,6 +104,7 @@ R = [
     ("Ibanez Artcore",           r"ibanez", r"artcore|\bas\d|\baf\d|\bag\d", None),
     ("Ibanez SR Bass",           r"ibanez", r"\bsr\d|soundgear", "bass-guitars"),
     ("Jackson Soloist",          r"jackson", r"soloist|\bsl\d", "electric-guitars"),
+    ("Jackson Dinky JS (budget)", r"jackson", both(r"dinky|\bdk\d?|\bjs\d", r"\bjs\d"), "electric-guitars"),
     ("Jackson Dinky",            r"jackson", r"dinky|\bdk\d?", "electric-guitars"),
     ("Jackson Rhoads",           r"jackson", r"rhoads|\brr\d?", "electric-guitars"),
     ("Charvel Pro-Mod/So-Cal",   r"charvel", r"pro[- ]?mod|so[- ]?cal|dk2", "electric-guitars"),
@@ -77,6 +118,7 @@ R = [
     ("Rickenbacker 4001/4003",   r"rickenbacker", r"\b400[13]\b", "bass-guitars"),
     ("Music Man StingRay Bass",  r"music\s?man", r"sting\s?ray", "bass-guitars"),
     ("Hofner Violin Bass",       r"hofner|höfner", r"violin|500/1", "bass-guitars"),
+    ("Yamaha Pacifica (budget 012-212)", r"yamaha", both(r"pacifica|\bpac\d", r"\bpac?\s?[0-2]\d\d"), "electric-guitars"),
     ("Yamaha Pacifica",          r"yamaha", r"pacifica", "electric-guitars"),
 
     # ---- acoustics
@@ -99,10 +141,34 @@ R = [
 RULES = [(fam, re.compile(b), re.compile(t), pt) for fam, b, t, pt in R]
 
 
+SQUIER_IN_TEXT = re.compile(r"squier|squire\b|squirer")
+
+
+def effective_brand(make, text):
+    """The brand we trust for sorting.
+
+    Usually the seller's make field. Two systematic misfilings are
+    corrected from the text: Squiers listed under Fender (in several
+    spellings) and Epiphones listed under Gibson. Text mentions never
+    otherwise override the make field — plenty of listings name-drop
+    brands they aren't ("Gibson-licensed", "compares to a Fender").
+    """
+    brand = (make or "").lower()
+    if SQUIER_IN_TEXT.search(text):
+        return "squier"
+    if "orville" in brand:            # "Orville by Gibson" is not Gibson
+        return "orville"
+    if "sterling" in brand:           # "Sterling by Music Man" likewise
+        return "sterling"
+    if "epiphone" in brand or ("epiphone" in text and "gibson" in brand):
+        return "epiphone"
+    return brand
+
+
 def match_family(make, model, title, product_type):
     """Return the family for a listing, or None if it stays unmatched."""
-    brand = (make or "").lower()
     text = f"{model or ''} {title or ''}".lower()
+    brand = effective_brand(make, text)
     for family, bpat, tpat, pt in RULES:
         if pt is not None and pt != product_type:
             continue
