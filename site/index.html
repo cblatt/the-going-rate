@@ -68,6 +68,35 @@
 </section>
 
 <section id="panel-insights" hidden>
+  <div class="statrow">
+    <div class="stat"><div class="stat-value" id="m-total"></div><div class="stat-label">of used guitars listed on Reverb right now</div></div>
+    <div class="stat"><div class="stat-value" id="m-median"></div><div class="stat-label">median asking price, all guitars</div></div>
+    <div class="stat"><div class="stat-value" id="m-brand"></div><div class="stat-label" id="m-brand-label"></div></div>
+  </div>
+
+  <div class="card insight" id="ins-overpricing">
+    <h2>The market punishes overpricing — measurably</h2>
+    <p class="context">Median days a listing has sat unsold, by where its price falls
+      among its own comparables. Sellers who price high don't sell — they wait.</p>
+    <div id="overpricing-chart"></div>
+  </div>
+
+  <div class="chart-pair">
+    <div class="card insight" id="ins-words">
+      <h2>What seller words tell you</h2>
+      <p class="context">Median price position of listings whose titles use each word.
+        50% = priced dead-average for what it is. The vocabulary of optimism is real.</p>
+      <div class="tablewrap"><table id="words-table"></table></div>
+    </div>
+    <div class="card insight" id="ins-regions">
+      <h2>Same guitar, different continent</h2>
+      <p class="context">Median asking price from European or Japanese sellers vs US
+        sellers, same group. EU prices include VAT and imports add shipping — but the
+        gaps are bigger than both.</p>
+      <div class="tablewrap"><table id="regions-table"></table></div>
+    </div>
+  </div>
+
   <div class="chart-pair">
     <div class="card insight" id="ins-vintage">
       <h2>Where vintage is worth it</h2>

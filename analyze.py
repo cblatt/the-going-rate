@@ -84,13 +84,13 @@ def main():
     snapshot_date = datetime.now(timezone.utc)
     rows = db.execute("""
         SELECT listing_id, make, model, year, title, condition, product_type,
-               published_at, url, photo_url, price_usd_cents
+               published_at, url, photo_url, price_usd_cents, listing_currency
         FROM listings JOIN observations USING (listing_id)
         WHERE price_usd_cents BETWEEN ? AND ?""", PRICE_SANE).fetchall()
 
     # ---- sort every listing into its bin
     guitars = []
-    for (lid, make, model, year, title, cond, pt, published, url, photo, cents) in rows:
+    for (lid, make, model, year, title, cond, pt, published, url, photo, cents, curr) in rows:
         family = match_family(make, model, title, pt)
         group = CONDITION_GROUP.get(cond)
         if not family or not group or PARTS_TITLE.search(title or ""):
@@ -99,6 +99,7 @@ def main():
             "id": lid, "family": family, "cond": group,
             "era": None if REISSUE.search(title or "") else decade(year),
             "title": title, "price": cents / 100, "url": url, "photo": photo,
+            "currency": curr,
             "days_listed": (snapshot_date - datetime.fromisoformat(published)).days
                            if published else None,
         })
@@ -239,7 +240,83 @@ def main():
                for fam, f in families.items() if f["n"] >= 100]
     density.sort(key=lambda r: -r["share"])
 
+    scored = [g for g in guitars if "pct" in g]
+
+    # does the market punish overpricing? price position vs time-on-market
+    overpricing = []
+    for label, lo_p, hi_p in [("cheapest 10%", 0, .10), ("10–25%", .10, .25),
+                              ("25–50%", .25, .50), ("50–75%", .50, .75),
+                              ("75–90%", .75, .90), ("priciest 10%", .90, 1.01)]:
+        ds = sorted(g["days_listed"] for g in scored
+                    if lo_p <= g["pct"] < hi_p and g["days_listed"] is not None)
+        if ds:
+            overpricing.append({"label": label, "days": ds[len(ds) // 2], "n": len(ds)})
+
+    # what seller words tell you: title vocabulary vs price position
+    WORDS = [
+        ("“rare”", r"\brare\b"), ("“vintage”", r"vintage"), ("“mint”", r"\bmint\b"),
+        ("“custom”", r"\bcustom\b"), ("“relic”", r"relic"),
+        ("“original case”", r"ohsc|original (hard ?shell )?case"),
+        ("“upgraded/modded”", r"upgrad|\bmodded\b|\bmods\b"),
+        ("“player grade”", r"player('?s)? grade|player condition"),
+        ("“OBO / make offer”", r"\bobo\b|make (me )?an offer|or best offer"),
+    ]
+    words = []
+    for label, pat in WORDS:
+        rx = re.compile(pat, re.I)
+        sel = [g for g in scored if rx.search(g["title"] or "")]
+        if len(sel) >= 200:
+            pcts = sorted(g["pct"] for g in sel)
+            ds = sorted(g["days_listed"] for g in sel if g["days_listed"] is not None)
+            words.append({"word": label, "n": len(sel),
+                          "pct": round(pcts[len(pcts) // 2], 3),
+                          "days": ds[len(ds) // 2] if ds else None})
+    words.sort(key=lambda w: -w["pct"])
+
+    # the market itself: total asking value + units-vs-dollars brand share
+    total_value = sum(r[10] for r in rows) / 100
+    all_prices = sorted(r[10] for r in rows)
+    overall_median = all_prices[len(all_prices) // 2] / 100
+    brand_units, brand_dollars = {}, {}
+    for r in rows:
+        b = (r[1] or "?").strip().lower()
+        brand_units[b] = brand_units.get(b, 0) + 1
+        brand_dollars[b] = brand_dollars.get(b, 0) + r[10] / 100
+    top_brands = sorted(brand_dollars, key=lambda b: -brand_dollars[b])[:6]
+    brands = [{"brand": b.title(), "units": round(brand_units[b] / len(rows), 3),
+               "dollars": round(brand_dollars[b] / total_value, 3)} for b in top_brands]
+
+    # geographic arbitrage: same family, non-US seller vs US seller
+    REGION = {"USD": "US", "EUR": "Europe", "GBP": "Europe", "JPY": "Japan"}
+    regions = []
+    for fam, gs in by_family.items():
+        if fam not in families:
+            continue
+        pools = {}
+        for g in gs:
+            r = REGION.get(g["currency"])
+            if r:
+                pools.setdefault(r, []).append(g["price"])
+        us = sorted(pools.get("US", []))
+        if len(us) < 50:
+            continue
+        us_med = us[len(us) // 2]
+        for reg in ("Europe", "Japan"):
+            p = sorted(pools.get(reg, []))
+            if len(p) >= 50:
+                med = p[len(p) // 2]
+                regions.append({"family": fam, "region": reg, "n": len(p),
+                                "abroad": med, "us": us_med,
+                                "gap": round(med / us_med - 1, 3)})
+    regions.sort(key=lambda r: r["gap"])
+    regions = regions[:12]
+
     insights = {
+        "overpricing": overpricing,
+        "words": words,
+        "market": {"total_value": total_value, "median": overall_median,
+                   "listings": len(rows), "brands": brands},
+        "regions": regions,
         "vintage": vintage[:10],
         "vintage_flat": vintage[-3:][::-1] if len(vintage) > 12 else [],
         "condition": condition[:10],

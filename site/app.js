@@ -26,7 +26,7 @@ function svgEl(tag, attrs) {
 
 /* Vertical bars with a $ label above each bar and a small n below —
    for the ≤8-bar era and condition charts. */
-function barChart(mount, items, valueKey, labelKey) {
+function barChart(mount, items, valueKey, labelKey, fmt = money) {
   mount.innerHTML = "";
   const W = 460, H = 190, top = 26, bottom = 34;
   const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart" });
@@ -39,10 +39,10 @@ function barChart(mount, items, valueKey, labelKey) {
     const y = H - bottom - h;
     const bar = svgEl("rect", { x, y, width: barW, height: h, rx: 3, class: "bar" });
     bar.appendChild(svgEl("title", {})).textContent =
-      `${d[labelKey]} — typical ${money(d[valueKey])} (${d.n.toLocaleString()} listings)`;
+      `${d[labelKey]} — ${fmt(d[valueKey])} (${d.n.toLocaleString()} listings)`;
     svg.appendChild(bar);
     const val = svgEl("text", { x: x + barW / 2, y: y - 7, class: "t-val", "text-anchor": "middle" });
-    val.textContent = money(d[valueKey]);
+    val.textContent = fmt(d[valueKey]);
     svg.appendChild(val);
     const lab = svgEl("text", { x: x + barW / 2, y: H - bottom + 15, class: "t-lab", "text-anchor": "middle" });
     lab.textContent = d[labelKey];
@@ -259,6 +259,39 @@ function famCell(name, display) {
 }
 
 function renderInsights() {
+  // hero stats: the market itself
+  const mk = INSIGHTS.market;
+  $("m-total").textContent = "$" + Math.round(mk.total_value / 1e6) + "M";
+  $("m-median").textContent = money(mk.median);
+  const lead = mk.brands.reduce((a, b) => (b.dollars > a.dollars ? b : a));
+  $("m-brand").textContent = lead.brand;
+  $("m-brand-label").textContent =
+    `biggest brand by dollars — ${Math.round(lead.dollars * 100)}% of value on ` +
+    `${Math.round(lead.units * 100)}% of listings`;
+
+  // overpricing vs time-on-market
+  barChart($("overpricing-chart"), INSIGHTS.overpricing, "days", "label", v => v + "d");
+
+  // seller vocabulary
+  const wt = $("words-table");
+  wt.appendChild(row(["title says…", "listings", "prices at", "days sitting"], "thead"));
+  for (const w of INSIGHTS.words) {
+    const pos = Math.round(w.pct * 100);
+    wt.appendChild(row([w.word, w.n.toLocaleString(),
+      { html: `<strong>${pos}th</strong> pctile`, cls: pos >= 55 ? "hot" : pos <= 45 ? "save" : "" },
+      w.days == null ? "–" : w.days]));
+  }
+
+  // geographic gaps
+  $("ins-regions").hidden = !INSIGHTS.regions.length;
+  const rt = $("regions-table");
+  rt.appendChild(row(["guitar", "region", "there", "US", "gap"], "thead"));
+  for (const r of INSIGHTS.regions) {
+    const pct = Math.round(r.gap * 100);
+    rt.appendChild(row([famCell(r.family), r.region, money(r.abroad), money(r.us),
+      { html: `<strong>${pct > 0 ? "+" : ""}${pct}%</strong>`, cls: pct < 0 ? "save" : "hot" }]));
+  }
+
   const vt = $("vintage-table");
   vt.appendChild(row(["guitar", "1970s", "2010s", "multiple"], "thead"));
   for (const r of INSIGHTS.vintage) {
