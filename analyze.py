@@ -199,6 +199,76 @@ def main():
             "deals": fam_deals[:8],
         }
 
+    # ---- cross-category insights: what to actually buy
+    def fam_median(name):
+        return families[name]["median"] if name in families else None
+
+    # same instrument, different factory — the flagship vs its cheaper siblings
+    PAIRS = [
+        ("Stratocaster", "Fender Stratocaster (American)",
+         ["Fender Stratocaster (Japan)", "Fender Stratocaster (Mexico)", "Squier Stratocaster"]),
+        ("Telecaster", "Fender Telecaster (American)",
+         ["Fender Telecaster (Japan)", "Fender Telecaster (Mexico)", "Squier Telecaster"]),
+        ("Les Paul", "Gibson Les Paul Standard", ["Epiphone Les Paul"]),
+        ("SG", "Gibson SG", ["Epiphone SG"]),
+        ("ES-335", "Gibson ES-335 family", ["Epiphone ES/Dot"]),
+        ("PRS Custom 24", "PRS Custom 24", ["PRS SE"]),
+        ("Jazz Bass", "Fender Jazz Bass (American)", ["Fender Jazz Bass (Mexico)", "Squier Jazz Bass"]),
+        ("Precision Bass", "Fender Precision Bass (American)",
+         ["Fender Precision Bass (Mexico)", "Squier Precision Bass"]),
+    ]
+    import_discount = []
+    for label, base, alts in PAIRS:
+        bm = fam_median(base)
+        if not bm:
+            continue
+        alt_rows = [{"family": a, "median": fam_median(a),
+                     "save": round(1 - fam_median(a) / bm, 3)}
+                    for a in alts if fam_median(a)]
+        if alt_rows:
+            import_discount.append({"label": label, "base": base, "base_median": bm,
+                                    "alts": alt_rows})
+
+    # vintage effect: 1970s price as a multiple of 2010s, same family
+    vintage = []
+    for fam, f in families.items():
+        eras = {e["era"]: e["median"] for e in f["by_era"]}
+        if "1970s" in eras and "2010s" in eras:
+            vintage.append({"family": fam, "multiple": round(eras["1970s"] / eras["2010s"], 2),
+                            "old": eras["1970s"], "new": eras["2010s"]})
+    vintage.sort(key=lambda r: -r["multiple"])
+
+    # condition discount: Good vs Excellent, same family
+    condition = []
+    for fam, f in families.items():
+        cm = {c["cond"]: c["median"] for c in f["by_cond"]}
+        if "Excellent" in cm and "Good" in cm and cm["Excellent"] > 0:
+            condition.append({"family": fam, "save": round(1 - cm["Good"] / cm["Excellent"], 3),
+                              "exc": cm["Excellent"], "good": cm["Good"]})
+    condition.sort(key=lambda r: -r["save"])
+
+    # liquidity: fastest and slowest movers (bigger families only, for stability)
+    liq = [{"family": fam, "days": f["days_median"], "n": f["n"]}
+           for fam, f in families.items() if f["days_median"] is not None and f["n"] >= 100]
+    liq.sort(key=lambda r: r["days"])
+    liquidity = {"fast": liq[:8], "slow": liq[-8:][::-1]}
+
+    # deal density: where underpriced listings cluster right now
+    density = [{"family": fam, "share": round(f["deal_count"] / f["n"], 3),
+                "deal_count": f["deal_count"], "n": f["n"]}
+               for fam, f in families.items() if f["n"] >= 100]
+    density.sort(key=lambda r: -r["share"])
+
+    insights = {
+        "import_discount": import_discount,
+        "vintage": vintage[:10],
+        "vintage_flat": vintage[-3:][::-1] if len(vintage) > 12 else [],
+        "condition": condition[:10],
+        "condition_flat": condition[-3:][::-1] if len(condition) > 12 else [],
+        "liquidity": liquidity,
+        "density": density[:10],
+    }
+
     meta = {
         "guitars": len(guitars),
         "groups": sum(len(v) for v in market.values()),
@@ -213,6 +283,7 @@ def main():
     (OUT_DIR / "data.js").write_text(
         f"window.FAMILIES={json.dumps(families)};"
         f"window.DEALS={json.dumps(top_deals)};"
+        f"window.INSIGHTS={json.dumps(insights)};"
         f"window.META={json.dumps(meta)};")
     print(f"{len(market)} families with price tables -> site/data/market.json")
     print(f"{len(deals):,} below-typical listings; top 200 -> site/data/deals.json")

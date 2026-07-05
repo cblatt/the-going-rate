@@ -13,6 +13,7 @@
   <p class="tagline"><span id="meta-line"></span></p>
   <nav>
     <button id="tab-dash" class="tab active">Market briefing</button>
+    <button id="tab-insights" class="tab">Buyer's playbook</button>
     <button id="tab-deals" class="tab">Today's best deals</button>
   </nav>
 </header>
@@ -62,6 +63,45 @@
     <h2>Best deals in this group right now</h2>
     <p class="context" id="fam-deal-note"></p>
     <div id="fam-deals"></div>
+  </div>
+</section>
+
+<section id="panel-insights" hidden>
+  <div class="card insight" id="ins-import">
+    <h2>The import discount</h2>
+    <p class="context">The same instrument from a different factory line. This is the
+       market's answer to "do I really need the American one?"</p>
+    <div class="tablewrap"><table id="import-table"></table></div>
+  </div>
+
+  <div class="chart-pair">
+    <div class="card insight" id="ins-vintage">
+      <h2>Where vintage is worth it</h2>
+      <p class="context">Typical 1970s price as a multiple of the same guitar from the
+         2010s. High multiple = the old ones are the asset; low = buy modern, save money.</p>
+      <div class="tablewrap"><table id="vintage-table"></table></div>
+    </div>
+    <div class="card insight" id="ins-cond">
+      <h2>The condition discount</h2>
+      <p class="context">What "Good" saves you vs "Excellent," same guitar. Big saving =
+         buy the player's copy; tiny saving = might as well get the clean one.</p>
+      <div class="tablewrap"><table id="cond-table"></table></div>
+    </div>
+  </div>
+
+  <div class="chart-pair">
+    <div class="card insight" id="ins-liq">
+      <h2>Fast movers vs shelf sitters</h2>
+      <p class="context">Median days on market. Fast movers are safe buys — easy to resell.
+         Shelf sitters mean stuck sellers: negotiate without shame.</p>
+      <div class="tablewrap"><table id="liq-table"></table></div>
+    </div>
+    <div class="card insight" id="ins-density">
+      <h2>Where bargains cluster today</h2>
+      <p class="context">Share of a group's listings currently priced below even its own
+         cheap quartile. High share = a buyer's market this week.</p>
+      <div class="tablewrap"><table id="density-table"></table></div>
+    </div>
   </div>
 </section>
 

@@ -163,6 +163,18 @@ select, input[type="search"], input[type="number"] {
   font-size: 12.5px; font-weight: 600; color: var(--good); background: var(--good-wash);
 }
 
+/* ---- buyer's playbook tables ---- */
+.insight { margin-bottom: 14px; }
+.insight h2 { margin: 0 0 2px; font-size: 16px; }
+.tablewrap { overflow-x: auto; margin-top: 10px; }
+.insight table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.insight td { padding: 6px 10px 6px 0; border-top: 1px solid var(--hairline); vertical-align: top; }
+.insight tr.thead td { color: var(--muted); font-size: 12px; border-top: none; }
+.insight tr.base-row td { padding-top: 12px; }
+.insight tr.divider td { color: var(--ink-2); padding-top: 12px; }
+.insight td.save { color: var(--good); font-variant-numeric: tabular-nums; }
+.insight td:last-child { text-align: right; }
+
 footer {
   padding: 24px 20px 48px; color: var(--muted); font-size: 13px;
   border-top: 1px solid var(--hairline);

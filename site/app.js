@@ -7,12 +7,13 @@ const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- tabs ---------- */
 function showTab(which) {
-  $("panel-dash").hidden = which !== "dash";
-  $("panel-deals").hidden = which !== "deals";
-  $("tab-dash").classList.toggle("active", which === "dash");
-  $("tab-deals").classList.toggle("active", which === "deals");
+  for (const t of ["dash", "insights", "deals"]) {
+    $("panel-" + t).hidden = t !== which;
+    $("tab-" + t).classList.toggle("active", t === which);
+  }
 }
 $("tab-dash").onclick = () => showTab("dash");
+$("tab-insights").onclick = () => showTab("insights");
 $("tab-deals").onclick = () => showTab("deals");
 
 /* ---------- tiny SVG helpers (single hue, thin marks, direct labels) ---------- */
@@ -230,9 +231,77 @@ function renderDeals() {
 $("deal-search").oninput = renderDeals;
 $("deal-sort").onchange = renderDeals;
 
+/* ---------- buyer's playbook ---------- */
+function row(cells, cls) {
+  const tr = document.createElement("tr");
+  if (cls) tr.className = cls;
+  for (const c of cells) {
+    const td = document.createElement("td");
+    if (typeof c === "object") { td.innerHTML = c.html; if (c.cls) td.className = c.cls; }
+    else td.textContent = c;
+    tr.appendChild(td);
+  }
+  return tr;
+}
+
+function renderInsights() {
+  const it = $("import-table");
+  for (const g of INSIGHTS.import_discount) {
+    it.appendChild(row([{ html: `<strong>${g.label}</strong>` },
+      `${shortName(g.base)} · ${money(g.base_median)}`, ""], "base-row"));
+    for (const a of g.alts) {
+      it.appendChild(row(["", `${shortName(a.family)} · ${money(a.median)}`,
+        { html: `−${Math.round(a.save * 100)}%`, cls: "save" }]));
+    }
+  }
+
+  const vt = $("vintage-table");
+  vt.appendChild(row(["guitar", "1970s", "2010s", "multiple"], "thead"));
+  for (const r of INSIGHTS.vintage) {
+    vt.appendChild(row([r.family, money(r.old), money(r.new),
+      { html: `<strong>${r.multiple}×</strong>` }]));
+  }
+  if (INSIGHTS.vintage_flat.length) {
+    vt.appendChild(row([{ html: "<em>…and where vintage buys you nothing:</em>" }, "", "", ""], "divider"));
+    for (const r of INSIGHTS.vintage_flat) {
+      vt.appendChild(row([r.family, money(r.old), money(r.new), `${r.multiple}×`]));
+    }
+  }
+
+  const ct = $("cond-table");
+  ct.appendChild(row(["guitar", "Excellent", "Good", "you save"], "thead"));
+  for (const r of INSIGHTS.condition) {
+    ct.appendChild(row([r.family, money(r.exc), money(r.good),
+      { html: `<strong>−${Math.round(r.save * 100)}%</strong>`, cls: "save" }]));
+  }
+
+  const lt = $("liq-table");
+  lt.appendChild(row([{ html: "<em>fast movers</em>" }, "days", ""], "divider"));
+  for (const r of INSIGHTS.liquidity.fast) {
+    lt.appendChild(row([r.family, r.days, `${r.n.toLocaleString()} listed`]));
+  }
+  lt.appendChild(row([{ html: "<em>shelf sitters — negotiate</em>" }, "days", ""], "divider"));
+  for (const r of INSIGHTS.liquidity.slow) {
+    lt.appendChild(row([r.family, r.days, `${r.n.toLocaleString()} listed`]));
+  }
+
+  const dt = $("density-table");
+  dt.appendChild(row(["guitar", "underpriced share", "count"], "thead"));
+  for (const r of INSIGHTS.density) {
+    dt.appendChild(row([r.family,
+      { html: `<strong>${Math.round(r.share * 100)}%</strong>`, cls: "save" },
+      `${r.deal_count} of ${r.n.toLocaleString()}`]));
+  }
+}
+
+function shortName(f) {
+  return f.replace(/^(Fender|Gibson|Squier|Epiphone|PRS) /, "");
+}
+
 /* ---------- boot ---------- */
 $("meta-line").textContent =
   `${META.guitars.toLocaleString()} used guitars for sale on Reverb, priced against ` +
   `their own kind · ${META.generated}`;
 initFamilies();
+renderInsights();
 renderDeals();
