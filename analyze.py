@@ -14,6 +14,7 @@ comparison shown is against at least 30 real guitars.
 Usage:  python3 analyze.py
 """
 
+import csv
 import json
 import re
 import sqlite3
@@ -293,6 +294,23 @@ def main():
         f"window.DEALS={json.dumps(top_deals)};"
         f"window.INSIGHTS={json.dumps(insights)};"
         f"window.META={json.dumps(meta)};")
+
+    # ---- the raw-data tab: every scored listing, lazily loaded + CSV
+    scored = sorted((g for g in guitars if "bin" in g),
+                    key=lambda g: (g["family"], g["pct"]))
+    cols = ["id", "family", "title", "price", "cond", "era", "days_listed", "pct", "discount"]
+    rows_out = [[g["id"], g["family"], (g["title"] or "")[:80], round(g["price"]),
+                 g["cond"], g["era"], g["days_listed"], g["pct"], g["discount"]]
+                for g in scored]
+    (OUT_DIR / "listings.js").write_text(
+        f"window.LISTING_COLS={json.dumps(cols)};"
+        f"window.LISTINGS={json.dumps(rows_out, separators=(',', ':'))};")
+    with (OUT_DIR / "listings.csv").open("w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(cols + ["url"])
+        for r in rows_out:
+            w.writerow(r + [f"https://reverb.com/item/{r[0]}"])
+    print(f"{len(rows_out):,} scored listings -> site/data/listings.js + listings.csv")
     print(f"{len(market)} families with price tables -> site/data/market.json")
     print(f"{len(deals):,} below-typical listings; top 200 -> site/data/deals.json")
 

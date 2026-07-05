@@ -190,6 +190,15 @@ select, input[type="search"], input[type="number"] {
 }
 .thumb.ph { display: inline-block; }
 
+/* raw data tab */
+#panel-data .card { padding: 16px 20px; }
+#data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#data-table td { padding: 5px 10px 5px 0; border-top: 1px solid var(--hairline); vertical-align: middle; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#data-table td:nth-child(2) { max-width: 340px; overflow: hidden; text-overflow: ellipsis; }
+#data-table tr.thead td { color: var(--muted); font-size: 12px; border-top: none; }
+.rawlink { color: var(--ink); text-decoration: none; }
+.rawlink:hover { text-decoration: underline; }
+
 /* example photo beside the guitar picker */
 .dash-controls { align-items: flex-end; }
 .fam-example { text-decoration: none; text-align: center; }

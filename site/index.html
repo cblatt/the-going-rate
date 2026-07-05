@@ -15,6 +15,7 @@
     <button id="tab-dash" class="tab active">Market briefing</button>
     <button id="tab-insights" class="tab">Buyer's playbook</button>
     <button id="tab-deals" class="tab">Today's best deals</button>
+    <button id="tab-data" class="tab">The data</button>
   </nav>
 </header>
 
@@ -122,6 +123,20 @@
      only against listings of the same model, era, and condition. Asking prices —
      always click through and read the listing before believing a bargain.</p>
   <div id="deal-list"></div>
+</section>
+
+<section id="panel-data" hidden>
+  <p class="context">Every listing behind the numbers — one pull of Reverb's public
+    listings API, sorted into groups by ~100 plain keyword rules, scored against its
+    own group. Percentile 0.10 = cheaper than 90% of its comparables.
+    <a href="data/listings.csv" download>Download the full CSV</a>.</p>
+  <div class="controls">
+    <input id="data-search" type="search" placeholder="filter: family, title…">
+  </div>
+  <div class="card">
+    <p class="context" id="data-count"></p>
+    <div class="tablewrap"><table id="data-table" class="insight-table"></table></div>
+  </div>
 </section>
 
 </main>

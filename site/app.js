@@ -7,7 +7,7 @@ const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- tabs ---------- */
 function showTab(which) {
-  for (const t of ["dash", "insights", "deals"]) {
+  for (const t of ["dash", "insights", "deals", "data"]) {
     $("panel-" + t).hidden = t !== which;
     $("tab-" + t).classList.toggle("active", t === which);
   }
@@ -15,6 +15,7 @@ function showTab(which) {
 $("tab-dash").onclick = () => showTab("dash");
 $("tab-insights").onclick = () => showTab("insights");
 $("tab-deals").onclick = () => showTab("deals");
+$("tab-data").onclick = () => { showTab("data"); loadListings(); };
 
 /* ---------- tiny SVG helpers (single hue, thin marks, direct labels) ---------- */
 function svgEl(tag, attrs) {
@@ -313,6 +314,44 @@ function renderInsights() {
       `${r.deal_count} of ${r.n.toLocaleString()}`]));
   }
 }
+
+/* ---------- raw data tab (56k rows — loaded only when opened) ---------- */
+let listingsLoading = false;
+
+function loadListings() {
+  if (window.LISTINGS) { renderData(); return; }
+  if (listingsLoading) return;
+  listingsLoading = true;
+  $("data-count").textContent = "loading 56,000 rows…";
+  const s = document.createElement("script");
+  s.src = "data/listings.js";
+  s.onload = renderData;
+  s.onerror = () => { $("data-count").textContent = "couldn't load data/listings.js"; };
+  document.body.appendChild(s);
+}
+
+function renderData() {
+  const q = $("data-search").value.trim().toLowerCase();
+  // columns: id, family, title, price, cond, era, days_listed, pct, discount
+  let rows = window.LISTINGS;
+  if (q) rows = rows.filter(r => (r[1] + " " + r[2]).toLowerCase().includes(q));
+  const CAP = 300;
+  $("data-count").textContent =
+    `${rows.length.toLocaleString()} listings` +
+    (rows.length > CAP ? ` — showing the first ${CAP} (narrow with the filter, or grab the CSV)` : "");
+  const t = $("data-table");
+  t.innerHTML = "";
+  t.appendChild(row(["guitar", "listing", "price", "cond", "era", "days", "pctile"], "thead"));
+  for (const r of rows.slice(0, CAP)) {
+    t.appendChild(row([
+      r[1],
+      { html: `<a class="rawlink" href="https://reverb.com/item/${r[0]}" target="_blank" rel="noopener">${r[2]}</a>` },
+      money(r[3]), r[4], r[5] || "–", r[6] ?? "–",
+      Math.round(r[7] * 100) + "%",
+    ]));
+  }
+}
+$("data-search").oninput = () => { if (window.LISTINGS) renderData(); };
 
 /* ---------- boot ---------- */
 $("meta-line").textContent =
