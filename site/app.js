@@ -119,13 +119,6 @@ function initFamilies() {
 function renderDash() {
   const fam = FAMILIES[familySel.value];
   current = fam;
-  const ex = $("fam-example");
-  ex.hidden = !fam.photo;
-  if (fam.photo) {
-    $("fam-photo").src = fam.photo;
-    ex.href = fam.example_url;
-    ex.title = fam.example_title || "";
-  }
   $("s-median").textContent = money(fam.median);
   $("s-range").textContent = `${money(fam.p25)}–${money(fam.p75)}`;
   $("s-n").textContent = fam.n.toLocaleString();
