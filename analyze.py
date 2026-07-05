@@ -209,35 +209,6 @@ def main():
         }
 
     # ---- cross-category insights: what to actually buy
-    def fam_median(name):
-        return families[name]["median"] if name in families else None
-
-    # same instrument, different factory — the flagship vs its cheaper siblings
-    PAIRS = [
-        ("Stratocaster", "Fender Stratocaster (American)",
-         ["Fender Stratocaster (Japan)", "Fender Stratocaster (Mexico)", "Squier Stratocaster"]),
-        ("Telecaster", "Fender Telecaster (American)",
-         ["Fender Telecaster (Japan)", "Fender Telecaster (Mexico)", "Squier Telecaster"]),
-        ("Les Paul", "Gibson Les Paul Standard", ["Epiphone Les Paul"]),
-        ("SG", "Gibson SG", ["Epiphone SG"]),
-        ("ES-335", "Gibson ES-335 family", ["Epiphone ES/Dot"]),
-        ("PRS Custom 24", "PRS Custom 24", ["PRS SE"]),
-        ("Jazz Bass", "Fender Jazz Bass (American)", ["Fender Jazz Bass (Mexico)", "Squier Jazz Bass"]),
-        ("Precision Bass", "Fender Precision Bass (American)",
-         ["Fender Precision Bass (Mexico)", "Squier Precision Bass"]),
-    ]
-    import_discount = []
-    for label, base, alts in PAIRS:
-        bm = fam_median(base)
-        if not bm:
-            continue
-        alt_rows = [{"family": a, "median": fam_median(a),
-                     "save": round(1 - fam_median(a) / bm, 3)}
-                    for a in alts if fam_median(a)]
-        if alt_rows:
-            import_discount.append({"label": label, "base": base, "base_median": bm,
-                                    "alts": alt_rows})
-
     # vintage effect: 1970s price as a multiple of 2010s, same family
     vintage = []
     for fam, f in families.items():
@@ -269,7 +240,6 @@ def main():
     density.sort(key=lambda r: -r["share"])
 
     insights = {
-        "import_discount": import_discount,
         "vintage": vintage[:10],
         "vintage_flat": vintage[-3:][::-1] if len(vintage) > 12 else [],
         "condition": condition[:10],

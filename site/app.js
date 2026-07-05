@@ -259,16 +259,6 @@ function famCell(name, display) {
 }
 
 function renderInsights() {
-  const it = $("import-table");
-  for (const g of INSIGHTS.import_discount) {
-    it.appendChild(row([{ html: `<strong>${g.label}</strong>` }, "", ""], "group-row"));
-    it.appendChild(row([famCell(g.base, shortName(g.base)), money(g.base_median), ""], "base-row"));
-    for (const a of g.alts) {
-      it.appendChild(row([famCell(a.family, shortName(a.family)), money(a.median),
-        { html: `<strong>−${Math.round(a.save * 100)}%</strong>`, cls: "save" }]));
-    }
-  }
-
   const vt = $("vintage-table");
   vt.appendChild(row(["guitar", "1970s", "2010s", "multiple"], "thead"));
   for (const r of INSIGHTS.vintage) {
