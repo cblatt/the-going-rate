@@ -1,7 +1,6 @@
 # The Going Rate
 
-I made an AI read every used guitar listed on Reverb — all 166,007 of them —
-and built the price guide the market never had.
+Reverb has 166,007 used guitars listed right now. The Going Rate reads all of them, prices every guitar against its own kind, and tells you whether an asking price is fair: the price guide the used-guitar market never had.
 
 **Live site:** `LIVE_URL_HERE`
 (or open [`docs/index.html`](docs/index.html) in any browser — it runs fully offline)
