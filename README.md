@@ -4,6 +4,7 @@ Reverb has 166,007 used guitars listed right now. The Going Rate reads all of th
 
 **Live site:** **<https://cblatt.github.io/the-going-rate/>**
 (or open [`docs/index.html`](docs/index.html) in any browser — it runs fully offline)
+**Repo & commit history:** <https://github.com/cblatt/the-going-rate>
 
 The full story — what the AI did, what a human decided, and the independent
 audit of the results — is on the site, under **"How it was built."**
