@@ -27,7 +27,7 @@ MIN_COMPS = 30
 PRICE_SANE = (50_00, 100_000_00)   # cents; outside this = junk/typo listings
 DEAL_MIN_PRICE = 100_00            # ignore "deals" under $100 (usually parts)
 MAX_REAL_DISCOUNT = 0.70           # >70% below typical = mislabeled, not a deal
-OUT_DIR = Path("site/data")
+OUT_DIR = Path("docs/data")
 
 # Sellers miscategorize parts as whole guitars; a part's title gives it away.
 PARTS_TITLE = re.compile(
@@ -389,9 +389,9 @@ def main():
         w.writerow(cols + ["url"])
         for r in rows_out:
             w.writerow(r + [f"https://reverb.com/item/{r[0]}"])
-    print(f"{len(rows_out):,} scored listings -> site/data/listings.js + listings.csv")
-    print(f"{len(market)} families with price tables -> site/data/market.json")
-    print(f"{len(deals):,} below-typical listings; top 200 -> site/data/deals.json")
+    print(f"{len(rows_out):,} scored listings -> docs/data/listings.js + listings.csv")
+    print(f"{len(market)} families with price tables -> docs/data/market.json")
+    print(f"{len(deals):,} below-typical listings; top 200 -> docs/data/deals.json")
 
     print("\ntonight's five biggest discounts:")
     for g in top_deals[:5]:
