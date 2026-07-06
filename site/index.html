@@ -3,48 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fret Check — the used guitar market, priced</title>
+<title>The Going Rate — a blue book for used guitars</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <h1>Fret Check</h1>
+  <h1>The Going Rate</h1>
   <p class="tagline"><span id="meta-line"></span></p>
   <nav>
-    <button id="tab-dash" class="tab active">Market briefing</button>
-    <button id="tab-insights" class="tab">Buyer's playbook</button>
+    <button id="tab-dash" class="tab active">Check a price</button>
     <button id="tab-deals" class="tab">Today's best deals</button>
-    <button id="tab-data" class="tab">The data</button>
+    <button id="tab-insights" class="tab">Market overview</button>
+    <span class="navspacer"></span>
+    <button id="tab-data" class="tab secondary">The data</button>
+    <button id="tab-story" class="tab secondary">How it was built</button>
   </nav>
 </header>
 
 <main>
 
 <section id="panel-dash">
-  <div class="controls">
-    <label>Pick a guitar
-      <select id="family"></select>
-    </label>
+<div class="dash-grid">
+<div class="dash-main">
+  <div class="card hero-card">
+    <div class="hero-controls">
+      <label>Guitar
+        <select id="family"></select>
+      </label>
+      <label><span>Asking price <span class="opt">(optional)</span></span>
+        <span class="pricewrap"><span class="dollar">$</span>
+        <input id="price-in" type="number" min="0" placeholder="type a price…"></span>
+      </label>
+    </div>
+    <p class="hero-answer" id="hero-answer"></p>
+    <p class="hero-caption" id="hero-caption"></p>
   </div>
 
-  <div class="statrow">
-    <div class="stat"><div class="stat-value" id="s-median"></div><div class="stat-label">typical asking price</div></div>
-    <div class="stat"><div class="stat-value" id="s-range"></div><div class="stat-label">middle 50% of prices</div></div>
-    <div class="stat"><div class="stat-value" id="s-n"></div><div class="stat-label" id="s-n-label">for sale right now</div></div>
-    <div class="stat"><div class="stat-value" id="s-days"></div><div class="stat-label" id="s-days-label">median days on market</div></div>
-  </div>
+  <p class="section-label">The evidence</p>
 
   <div class="card chart-card" id="card-hist">
     <h2>Where asking prices sit</h2>
-    <p class="context">Every current listing of this guitar, by asking price.
-       Type a price to see where it lands.</p>
+    <p class="context">Every current listing of this guitar, by asking price —
+       hover any bar for its price band. Your price shows as the marker.</p>
     <div id="hist"></div>
-    <div class="tryrow">
-      <span class="dollar">$</span>
-      <input id="price-in" type="number" min="0" placeholder="try a price…">
-      <p id="verdict" class="verdict" hidden></p>
-    </div>
   </div>
 
   <div class="chart-pair">
@@ -60,25 +62,53 @@
     </div>
   </div>
 
-  <div class="card" id="card-deals">
-    <h2>Best deals in this group right now</h2>
-    <p class="context" id="fam-deal-note"></p>
-    <div id="fam-deals"></div>
+  <div class="card" id="card-callouts" hidden>
+    <h2>Worth knowing before you buy</h2>
+    <ul id="callouts"></ul>
   </div>
+</div>
+
+<aside class="dash-side">
+  <p class="section-label">The action</p>
+
+  <div class="rail-body">
+    <div class="card" id="card-deals">
+      <h2>Best deals on this guitar right now</h2>
+      <p class="context" id="fam-deal-note"></p>
+      <div id="fam-deals"></div>
+      <button id="fam-deals-more" class="linklike" hidden></button>
+    </div>
+  </div>
+</aside>
+</div>
 </section>
 
 <section id="panel-insights" hidden>
+  <h2 class="page-title">Market overview</h2>
+  <p class="context">Market-wide findings from the same snapshot the price checker
+    runs on — the patterns behind the verdicts.</p>
+
   <div class="statrow">
     <div class="stat"><div class="stat-value" id="m-total"></div><div class="stat-label">of used guitars listed on Reverb right now</div></div>
     <div class="stat"><div class="stat-value" id="m-median"></div><div class="stat-label">median asking price, all guitars</div></div>
     <div class="stat"><div class="stat-value" id="m-brand"></div><div class="stat-label" id="m-brand-label"></div></div>
   </div>
 
-  <div class="card insight" id="ins-overpricing">
-    <h2>The market punishes overpricing — measurably</h2>
-    <p class="context">Median days a listing has sat unsold, by where its price falls
-      among its own comparables. Sellers who price high don't sell — they wait.</p>
-    <div id="overpricing-chart"></div>
+  <div class="chart-pair">
+    <div class="card insight" id="ins-overpricing">
+      <h2>The market punishes overpricing — measurably</h2>
+      <p class="context">Median days a listing has sat unsold, by where its price falls
+        among its own comparables. Sellers who price high don't sell — they wait.</p>
+      <div id="overpricing-chart"></div>
+    </div>
+    <div class="card insight" id="ins-brands">
+      <h2>Premium brands hoard the dollars</h2>
+      <p class="context">Each brand's share of all listings vs its share of all asking
+        value. When blue towers over gray, the brand's guitars carry a premium.</p>
+      <p class="legend-line"><span class="sw sw-neutral"></span>share of listings
+        <span class="sw sw-accent"></span>share of dollars</p>
+      <div id="brands-chart"></div>
+    </div>
   </div>
 
   <div class="chart-pair">
@@ -143,7 +173,91 @@
   <div id="deal-list"></div>
 </section>
 
+<section id="panel-story" hidden>
+  <h2 class="page-title">How this was built</h2>
+  <p class="context">166,007 listings collected · 56,498 sorted into 99 comparable groups ·
+    820 priceable combinations · top 1,000 bargains independently audited, 113 removed ·
+    built with Claude Code.</p>
+
+  <div class="card story">
+    <h2>Problem → solution</h2>
+    <p><strong>Problem:</strong> used-guitar prices are folklore. The 166,000 live Reverb
+      listings hold the real answer, but no buyer can read them all.</p>
+    <p><strong>Solution:</strong> read them all. Sort every guitar into a group of true
+      comparables, price it against its own group with plain percentiles, and surface the
+      verdicts — a price checker, a market overview, a ranked deal feed.</p>
+  </div>
+
+  <div class="card story">
+    <h2>1 · Collect the data</h2>
+    <ul>
+      <li>166,007 listings pulled from Reverb's public API into SQLite — Python stdlib
+        only, nothing to install.</li>
+      <li>One search can only return its first 20,000 results — found by testing, not in
+        the docs — and the market holds 166,000. Fix: pull the market in price ranges
+        ($0–500, $500–1,000, …), splitting any range that's still too big in half, until
+        every listing is reachable.</li>
+      <li>Asking prices, not sale prices — Reverb doesn't publish transactions, so every
+        verdict is relative to today's market.</li>
+      <li>166,007 collected, 56,498 priced. A guitar is only priced if its listing can
+        be confidently matched to a group of 30+ true comparables — the rest (rare
+        models, small brands, vague listings) are left out rather than guessed at.</li>
+    </ul>
+  </div>
+
+  <div class="card story">
+    <h2>2 · Analyze</h2>
+    <ul>
+      <li>Value often hides in the seller's own words ("player grade," "as-is,"
+        "partscaster"), so the analysis starts by reading them: ~100 hand-written
+        keyword rules sort 56,498 listings into 99 families of true comparables.</li>
+      <li>Every guitar is priced against its own group — same model family, plus era and
+        condition where the group is deep enough, never fewer than 30 comparables. The
+        verdict is a plain percentile: "cheaper than 82% of comparable Strats."</li>
+      <li>Calling something a <em>deal</em> has a higher bar: it must undercut even the
+        cheap quartile of its group, with no damage admitted in the title — so budget
+        models and beat-up guitars can't fake a discount.</li>
+      <li>Final check: a fresh Claude instance re-read the top 1,000 bargains and removed
+        113 that were filed in the wrong group — e.g. "Custom Shop <em>pickups</em>" is
+        not a Custom Shop guitar.</li>
+    </ul>
+  </div>
+
+  <div class="card story">
+    <h2>3 · Build the site</h2>
+    <ul>
+      <li>One analysis script precomputes everything into static JSON; the site is plain
+        HTML/JS/SVG — no frameworks, no servers, no keys, no runtime moving parts.</li>
+      <li>Structured around one question — <em>is this guitar priced fairly?</em> —
+        verdict first, evidence below it, deals as the action.</li>
+    </ul>
+  </div>
+
+  <div class="card story">
+    <h2>Where the AI was — and wasn't</h2>
+    <ul>
+      <li>Every line of code written in a Claude Code session; every judgment call human.</li>
+      <li>The LLM sits only where errors are expensive: auditing the top of the deal
+        feed. Transparent rules for the bulk, intelligence for the edge cases.</li>
+    </ul>
+  </div>
+
+  <div class="card story">
+    <h2>Limits, stated</h2>
+    <ul>
+      <li>Asking ≠ sold. Validated the one way the data allows: listings this site calls
+        overpriced measurably sit unsold longer.</li>
+      <li>One snapshot, not a time series.</li>
+      <li>Sorting is ~89% accurate on its hardest slice — measured against an independent
+        audit, not assumed.</li>
+      <li>Rare models and small brands stay unpriced: four comparables is no
+        comparison.</li>
+    </ul>
+  </div>
+</section>
+
 <section id="panel-data" hidden>
+  <h2 class="page-title">The data &amp; methodology</h2>
   <p class="context">Every listing behind the numbers — one pull of Reverb's public
     listings API, sorted into groups by ~100 plain keyword rules, scored against its
     own group. Percentile 0.10 = cheaper than 90% of its comparables.
@@ -161,7 +275,7 @@
 
 <footer>
   Built from Reverb's public listings API. Prices are asking prices, not sale prices.
-  Not affiliated with Reverb. A take-home project, built with Claude Code.
+  Not affiliated with Reverb.
 </footer>
 
 <script src="data/data.js"></script>

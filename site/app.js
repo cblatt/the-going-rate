@@ -1,4 +1,4 @@
-/* Fret Check — reads window.FAMILIES / DEALS / META (from data/data.js).
+/* The Going Rate — reads window.FAMILIES / DEALS / META (from data/data.js).
    No frameworks, no network calls: everything is precomputed. */
 
 const $ = (id) => document.getElementById(id);
@@ -7,15 +7,16 @@ const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- tabs ---------- */
 function showTab(which) {
-  for (const t of ["dash", "insights", "deals", "data"]) {
+  for (const t of ["dash", "insights", "deals", "data", "story"]) {
     $("panel-" + t).hidden = t !== which;
     $("tab-" + t).classList.toggle("active", t === which);
   }
 }
 $("tab-dash").onclick = () => showTab("dash");
-$("tab-insights").onclick = () => showTab("insights");
 $("tab-deals").onclick = () => showTab("deals");
+$("tab-insights").onclick = () => showTab("insights");
 $("tab-data").onclick = () => { showTab("data"); loadListings(); };
+$("tab-story").onclick = () => showTab("story");
 
 /* ---------- tiny SVG helpers (single hue, thin marks, direct labels) ---------- */
 function svgEl(tag, attrs) {
@@ -64,15 +65,13 @@ function histChart(mount, fam, yourPrice) {
   const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart" });
   const max = Math.max(...counts);
   const bw = W / counts.length;
+  const bars = [];
   counts.forEach((c, i) => {
     const h = max ? (c / max) * (H - top - bottom) : 0;
-    const b0 = lo + (i / counts.length) * (hi - lo);
-    const b1 = lo + ((i + 1) / counts.length) * (hi - lo);
     const bar = svgEl("rect", {
       x: i * bw + 1, y: H - bottom - h, width: bw - 2, height: h, rx: 2, class: "bar-soft",
     });
-    bar.appendChild(svgEl("title", {})).textContent =
-      `${money(b0)}–${money(b1)}: ${c.toLocaleString()} listings`;
+    bars.push(bar);
     svg.appendChild(bar);
   });
   const px = (v) => Math.min(W, Math.max(0, (v - lo) / (hi - lo) * W));
@@ -95,6 +94,71 @@ function histChart(mount, fam, yourPrice) {
   const l0 = svgEl("text", { x: 2, y: H - 6, class: "t-n" }); l0.textContent = money(lo);
   const l1 = svgEl("text", { x: W - 2, y: H - 6, class: "t-n", "text-anchor": "end" }); l1.textContent = money(hi);
   svg.appendChild(l0); svg.appendChild(l1);
+  for (const f of [0.25, 0.5, 0.75]) {
+    const t = svgEl("text", { x: W * f, y: H - 6, class: "t-n", "text-anchor": "middle" });
+    t.textContent = money(lo + f * (hi - lo));
+    svg.appendChild(t);
+  }
+
+  // Immediate hover: the price band + count under the cursor. (The native
+  // <title> tooltip was there before but its delay made it undiscoverable.)
+  const tip = document.createElement("div");
+  tip.className = "charttip";
+  tip.hidden = true;
+  mount.appendChild(tip);
+  let hl = -1;
+  svg.addEventListener("mousemove", (ev) => {
+    const r = svg.getBoundingClientRect();
+    const i = Math.max(0, Math.min(counts.length - 1,
+      Math.floor((ev.clientX - r.left) / r.width * counts.length)));
+    if (hl !== i) {
+      if (hl >= 0) bars[hl].classList.remove("hl");
+      bars[i].classList.add("hl");
+      hl = i;
+    }
+    const b0 = lo + (i / counts.length) * (hi - lo);
+    const b1 = lo + ((i + 1) / counts.length) * (hi - lo);
+    tip.textContent = `${money(b0)}–${money(b1)} · ` +
+      `${counts[i].toLocaleString()} listing${counts[i] === 1 ? "" : "s"}`;
+    tip.hidden = false;
+    const box = mount.getBoundingClientRect();
+    tip.style.left = Math.max(0, Math.min(ev.clientX - box.left + 14,
+      box.width - tip.offsetWidth - 4)) + "px";
+    tip.style.top = (ev.clientY - box.top - 36) + "px";
+  });
+  svg.addEventListener("mouseleave", () => {
+    tip.hidden = true;
+    if (hl >= 0) bars[hl].classList.remove("hl");
+    hl = -1;
+  });
+  mount.appendChild(svg);
+}
+
+/* Two bars per item — a pale and a full one, both 0..1 shares with % labels.
+   For the brand listings-vs-dollars chart. */
+function dualBarChart(mount, items, aKey, bKey, labelKey) {
+  mount.innerHTML = "";
+  const W = 460, H = 190, top = 24, bottom = 22;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart" });
+  const max = Math.max(...items.flatMap(d => [d[aKey], d[bKey]]));
+  const slot = W / items.length;
+  const barW = Math.min(24, slot * 0.3);
+  const pctLab = (v) => Math.round(v * 100) + "%";
+  items.forEach((d, i) => {
+    const cx = slot * i + slot / 2;
+    for (const [k, cls, x] of [[aKey, "bar-neutral", cx - barW - 2], [bKey, "bar", cx + 2]]) {
+      const h = max ? (d[k] / max) * (H - top - bottom) : 0;
+      const y = H - bottom - h;
+      svg.appendChild(svgEl("rect", { x, y, width: barW, height: h, rx: 3, class: cls }));
+      const t = svgEl("text", { x: x + barW / 2, y: y - 6, class: "t-n", "text-anchor": "middle" });
+      t.textContent = pctLab(d[k]);
+      svg.appendChild(t);
+    }
+    const lab = svgEl("text", { x: cx, y: H - bottom + 15, class: "t-lab", "text-anchor": "middle" });
+    lab.textContent = d[labelKey];
+    svg.appendChild(lab);
+  });
+  svg.appendChild(svgEl("line", { x1: 0, x2: W, y1: H - bottom, y2: H - bottom, class: "baseline" }));
   mount.appendChild(svg);
 }
 
@@ -116,43 +180,145 @@ function initFamilies() {
   renderDash();
 }
 
+function priceIn() {
+  const v = parseFloat($("price-in").value);
+  return v > 0 ? v : null;
+}
+
 function renderDash() {
   const fam = FAMILIES[familySel.value];
   current = fam;
-  $("s-median").textContent = money(fam.median);
-  $("s-range").textContent = `${money(fam.p25)}–${money(fam.p75)}`;
-  $("s-n").textContent = fam.n.toLocaleString();
-  $("s-n-label").textContent = `for sale right now · #${fam.rank} most-listed guitar`;
-  if (fam.days_median != null) {
-    $("s-days").textContent = fam.days_median;
-    const vs = fam.days_median <= META.market_days_median ? "sells faster than" : "sits longer than";
-    $("s-days-label").textContent =
-      `median days on market — ${vs} the market's ${META.market_days_median}`;
-  } else {
-    $("s-days").textContent = "–";
-    $("s-days-label").textContent = "median days on market";
-  }
-
-  histChart($("hist"), fam, parseFloat($("price-in").value) || null);
-  judge();
+  renderHero();
+  histChart($("hist"), fam, priceIn());
 
   $("card-era").hidden = fam.by_era.length < 2;
   if (fam.by_era.length >= 2) barChart($("era-chart"), fam.by_era, "median", "era");
   $("card-cond").hidden = fam.by_cond.length < 2;
   if (fam.by_cond.length >= 2) barChart($("cond-chart"), fam.by_cond, "median", "cond");
 
+  renderCallouts(fam);
+  renderFamDeals(fam);
+}
+
+/* The check itself: no price = the market's answer, a price = the verdict. */
+function renderHero() {
+  const fam = current;
+  const price = priceIn();
+  const a = $("hero-answer");
+  if (!price) {
+    a.className = "hero-answer";
+    a.textContent = `Typical asking price: ${money(fam.median)}`;
+  } else {
+    const pct = percentile(fam, price);
+    const cheaper = Math.round(100 - pct);
+    if (pct <= 9) {
+      a.textContent = `${money(price)} is below almost every comparable listing — genuinely cheap, or the photos are hiding something.`;
+      a.className = "hero-answer good";
+    } else if (pct <= 35) {
+      a.textContent = `${money(price)} is a good price — cheaper than about ${cheaper}% of these.`;
+      a.className = "hero-answer good";
+    } else if (pct <= 65) {
+      a.textContent = `${money(price)} is typical — right in the middle of this market.`;
+      a.className = "hero-answer mid";
+    } else if (pct <= 90) {
+      a.textContent = `${money(price)} is high — about ${Math.round(pct)}% of these cost less.`;
+      a.className = "hero-answer high";
+    } else {
+      a.textContent = `${money(price)} is above nearly all comparable listings. Someone's feeling optimistic.`;
+      a.className = "hero-answer high";
+    }
+  }
+  $("hero-caption").textContent =
+    `middle half ${money(fam.p25)}–${money(fam.p75)} · ${fam.n.toLocaleString()} for sale right now · ` +
+    `#${fam.rank} most-listed guitar on Reverb`;
+}
+
+/* One-line insights about this family, next to the charts they explain. */
+function renderCallouts(fam) {
+  const items = [];
+  if (fam.days_median != null) {
+    const m = META.market_days_median;
+    items.push(fam.days_median <= m
+      ? `Sells in a median <strong>${fam.days_median} days</strong>, faster than the market's ${m} — liquid, easy to resell.`
+      : `Sits a median <strong>${fam.days_median} days</strong> vs the market's ${m} — sellers here wait; negotiate without shame.`);
+  }
+  const eras = {};
+  fam.by_era.forEach(e => { eras[e.era] = e.median; });
+  if (eras["1970s"] && eras["2010s"]) {
+    const mult = eras["1970s"] / eras["2010s"];
+    items.push(mult >= 1.3
+      ? `A 1970s one typically asks <strong>${mult.toFixed(1)}×</strong> a 2010s one (${money(eras["1970s"])} vs ${money(eras["2010s"])}) — the old ones are the asset.`
+      : `A 1970s one asks only ${mult.toFixed(1)}× a 2010s one — vintage buys you little here; buy modern and save.`);
+  }
+  const conds = {};
+  fam.by_cond.forEach(c => { conds[c.cond] = c.median; });
+  if (conds["Excellent"] && conds["Good"]) {
+    const save = 1 - conds["Good"] / conds["Excellent"];
+    items.push(save >= 0.08
+      ? `“Good” condition typically saves <strong>${Math.round(save * 100)}%</strong> vs “Excellent” (${money(conds["Good"])} vs ${money(conds["Excellent"])}) — the player's copy is the value buy.`
+      : `Condition barely moves the price here (${money(conds["Good"])} Good vs ${money(conds["Excellent"])} Excellent) — might as well get the clean one.`);
+  }
+  for (const r of fam.regions || []) {
+    const pct = Math.round(r.gap * 100);
+    items.push(pct >= 0
+      ? `${r.region} sellers typically ask <strong>+${pct}%</strong> vs US sellers (${money(r.abroad)} vs ${money(r.us)}) — buy domestic.`
+      : `${r.region} sellers typically ask <strong>${pct}%</strong> vs US sellers (${money(r.abroad)} vs ${money(r.us)}) — imports add shipping and duty, but a gap this size may cover it.`);
+  }
+  $("card-callouts").hidden = !items.length;
+  const ul = $("callouts");
+  ul.innerHTML = "";
+  for (const html of items) {
+    const li = document.createElement("li");
+    li.innerHTML = html;
+    ul.appendChild(li);
+  }
+}
+
+const FAM_DEALS_SHOWN = 25;
+
+function renderFamDeals(fam) {
   const box = $("fam-deals");
+  const more = $("fam-deals-more");
   box.innerHTML = "";
+  $("card-deals").scrollTop = 0;
   if (fam.deals.length) {
     $("fam-deal-note").textContent =
       `${fam.deal_count.toLocaleString()} listings in this group are priced below even its cheap ` +
-      `quartile; here are the top ${fam.deals.length}. Asking prices — read before you believe.`;
-    fam.deals.forEach(d => box.appendChild(dealCard(d)));
+      `quartile. Asking prices — read before you believe.`;
+    const prefix = familySel.value;
+    fam.deals.slice(0, FAM_DEALS_SHOWN).forEach(d => box.appendChild(dealCard(d, prefix)));
+    more.textContent = `show all ${fam.deal_count.toLocaleString()} in this group ↓`;
+    more.hidden = fam.deal_count <= FAM_DEALS_SHOWN;
+    more.onclick = () => showAllFamDeals(prefix);
   } else {
     $("fam-deal-note").textContent =
       "No listing in this group currently clears our deal bar (meaningfully cheaper than even " +
       "the cheap end of its own market, no damage admitted in the title).";
+    more.hidden = true;
   }
+}
+
+/* Full deal pools live in data/famdeals.js (~3 MB) — fetched once, on the
+   first "show all" click, never on page load. */
+let famDealsLoading = false;
+
+function showAllFamDeals(name) {
+  const more = $("fam-deals-more");
+  const render = () => {
+    const box = $("fam-deals");
+    box.innerHTML = "";
+    (window.FAM_DEALS[name] || []).forEach(d => box.appendChild(dealCard(d, name)));
+    more.hidden = true;
+  };
+  if (window.FAM_DEALS) { render(); return; }
+  if (famDealsLoading) return;
+  famDealsLoading = true;
+  more.textContent = "loading…";
+  const s = document.createElement("script");
+  s.src = "data/famdeals.js";
+  s.onload = render;
+  s.onerror = () => { more.textContent = "couldn't load the full list"; };
+  document.body.appendChild(s);
 }
 
 /* Rough percentile from the five known cut points, interpolated between. */
@@ -167,47 +333,26 @@ function percentile(row, price) {
   return 50;
 }
 
-function judge() {
-  const v = $("verdict");
-  const price = parseFloat($("price-in").value);
-  if (!current || !price) { v.hidden = true; return; }
-  v.hidden = false;
-  const pct = percentile(current, price);
-  const cheaper = Math.round(100 - pct);
-  if (pct <= 9) {
-    v.textContent = `Below almost every comparable listing — genuinely cheap, or the photos are hiding something.`;
-    v.className = "verdict good";
-  } else if (pct <= 35) {
-    v.textContent = `Good price — cheaper than about ${cheaper}% of these.`;
-    v.className = "verdict good";
-  } else if (pct <= 65) {
-    v.textContent = `Typical — right in the middle of this market.`;
-    v.className = "verdict mid";
-  } else if (pct <= 90) {
-    v.textContent = `High — about ${Math.round(pct)}% of these cost less.`;
-    v.className = "verdict high";
-  } else {
-    v.textContent = `Above nearly all comparable listings. Someone's feeling optimistic.`;
-    v.className = "verdict high";
-  }
-}
-
 familySel.onchange = renderDash;
-$("price-in").oninput = () => { histChart($("hist"), current, parseFloat($("price-in").value) || null); judge(); };
+$("price-in").oninput = () => { renderHero(); histChart($("hist"), current, priceIn()); };
 
 /* ---------- deal feed ---------- */
-function dealCard(d) {
+function dealCard(d, binPrefix) {
   const el = document.createElement("div");
   el.className = "deal";
   const img = d.photo ? `<img src="${d.photo}" alt="" loading="lazy">` : `<img alt="">`;
   const days = d.days_listed == null ? ""
     : d.days_listed <= 1 ? " · listed today"
     : ` · listed ${d.days_listed} days ago`;
+  // inside a family's own card the bin's family prefix is redundant — drop it
+  let bin = d.bin;
+  if (binPrefix && bin.startsWith(binPrefix)) bin = bin.slice(binPrefix.length).replace(/^ · /, "");
+  const comps = `${d.comps.toLocaleString()} ${binPrefix ? "comps" : "comparable listings"}`;
   el.innerHTML = `
     ${img}
     <div class="body">
       <a class="title" href="${d.url}" target="_blank" rel="noopener">${d.title}</a>
-      <div class="meta">${d.bin} · ${d.comps.toLocaleString()} comparable listings${days}</div>
+      <div class="meta">${bin ? bin + " · " : ""}${comps}${days}</div>
     </div>
     <div class="money">
       <div class="price">${money(d.price)}</div>
@@ -232,7 +377,7 @@ function renderDeals() {
 $("deal-search").oninput = renderDeals;
 $("deal-sort").onchange = renderDeals;
 
-/* ---------- buyer's playbook ---------- */
+/* ---------- market overview ---------- */
 function row(cells, cls) {
   const tr = document.createElement("tr");
   if (cls) tr.className = cls;
@@ -271,6 +416,11 @@ function renderInsights() {
 
   // overpricing vs time-on-market
   barChart($("overpricing-chart"), INSIGHTS.overpricing, "days", "label", v => v + "d");
+
+  // brand share: listings vs dollars
+  dualBarChart($("brands-chart"),
+    mk.brands.map(b => ({ ...b, brand: b.brand === "Prs" ? "PRS" : b.brand })),
+    "units", "dollars", "brand");
 
   // seller vocabulary
   const wt = $("words-table");
@@ -370,9 +520,17 @@ function renderData() {
 $("data-search").oninput = () => { if (window.LISTINGS) renderData(); };
 
 /* ---------- boot ---------- */
-$("meta-line").textContent =
-  `${META.guitars.toLocaleString()} used guitars for sale on Reverb, priced against ` +
-  `their own kind · ${META.generated}`;
+$("meta-line").innerHTML =
+  `The blue book for used guitars — ${META.guitars.toLocaleString()} for sale ` +
+  `on <a href="https://reverb.com" target="_blank" rel="noopener">Reverb</a> right now, ` +
+  `each priced against its own kind`;
 initFamilies();
 renderInsights();
 renderDeals();
+
+// deep link: #deals / #insights / #data / #story opens that tab directly
+const hash = location.hash.slice(1);
+if (["deals", "insights", "data", "story"].includes(hash)) {
+  showTab(hash);
+  if (hash === "data") loadListings();
+}

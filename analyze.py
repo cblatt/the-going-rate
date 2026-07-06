@@ -76,6 +76,15 @@ def pctile(prices_sorted, price):
     return lo / len(prices_sorted)
 
 
+DEAL_FIELDS = ("photo", "url", "title", "bin", "comps", "days_listed",
+               "price", "median", "discount")
+
+
+def slim(g):
+    """Only the fields a deal card renders — full dicts would bloat data.js."""
+    return {k: g[k] for k in DEAL_FIELDS}
+
+
 def quantiles(prices_sorted):
     q = lambda p: prices_sorted[min(int(len(prices_sorted) * p), len(prices_sorted) - 1)]
     return {"n": len(prices_sorted), "p10": q(.10), "p25": q(.25),
@@ -242,7 +251,7 @@ def main():
             "days_median": days[len(days) // 2] if days else None,
             "pct_over_year": round(sum(1 for d in days if d > 365) / len(days), 3) if days else None,
             "deal_count": len(fam_deals),
-            "deals": fam_deals[:25],
+            "deals": [slim(d) for d in fam_deals[:25]],
             "regions": fam_regions,
         }
 
@@ -352,11 +361,16 @@ def main():
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "market.json").write_text(json.dumps(market))
-    (OUT_DIR / "deals.json").write_text(json.dumps(top_deals))
+    (OUT_DIR / "deals.json").write_text(json.dumps([slim(g) for g in top_deals]))
+    # full per-family deal pools, lazy-loaded on the first "show all" click
+    (OUT_DIR / "famdeals.js").write_text(
+        "window.FAM_DEALS=" + json.dumps(
+            {fam: [slim(d) for d in deal_pool_by_family.get(fam, [])]
+             for fam in families}) + ";")
     # data.js lets the page work from a plain double-click (no server, no fetch)
     (OUT_DIR / "data.js").write_text(
         f"window.FAMILIES={json.dumps(families)};"
-        f"window.DEALS={json.dumps(top_deals)};"
+        f"window.DEALS={json.dumps([slim(g) for g in top_deals])};"
         f"window.INSIGHTS={json.dumps(insights)};"
         f"window.META={json.dumps(meta)};")
 
